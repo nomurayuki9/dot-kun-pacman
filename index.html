@@ -93,13 +93,13 @@
   .buff-freeze{color:var(--item-freeze);}
   .buff-x2{color:var(--item-x2);}
 
-  /* Game canvas wrap */
+  /* Game canvas wrap — 既定は PC 用 (タッチパッド分の高さを引かない) */
   #wrap {
     position:relative;
     box-shadow:0 0 40px rgba(33,33,255,0.35),0 0 80px rgba(255,233,59,0.15);
     border-radius:6px;
     aspect-ratio:19/21;
-    width:min(608px,calc(100vw - 16px),calc((100vh - 380px) * 19 / 21));
+    width:min(608px,calc(100vw - 16px),calc((100vh - 180px) * 19 / 21));
   }
   canvas {
     display:block;
@@ -109,8 +109,9 @@
     width:100%; height:100%;
   }
 
-  /* Touch pad */
+  /* Touch pad — 既定は非表示。タッチデバイスでのみ表示 */
   .touch-pad {
+    display:none;
     position:relative;
     width:200px; height:200px;
     margin-top:4px;
@@ -118,6 +119,10 @@
     user-select:none;
     -webkit-user-select:none;
     -webkit-touch-callout:none;
+  }
+  /* タッチデバイス (指で操作) のときだけ表示 */
+  @media (pointer:coarse) {
+    .touch-pad { display:block; }
   }
   .touch-pad button {
     position:absolute;
@@ -1076,19 +1081,31 @@ const GHOST_DEFS = [
 
 function spawnGhosts() {
   state.ghosts = [];
+  // レベルに応じて登場お化け数を段階的に増やす
+  // Lv1=2体, Lv2=3体, Lv3=4体, Lv4+=4体
+  const activeCount = Math.min(4, 1 + state.level);
+  // 基本速度も段階的に上げる (Lv1 はゆっくり)
+  const baseSpeed = 3.4 + state.level * 0.25;
+  // 初期出撃遅延もレベルに応じて調整 (低レベルほどゆっくり出てくる)
+  const delayStep = state.level <= 2 ? 3.0 : (state.level <= 4 ? 2.0 : 1.2);
+  const initialDelay = state.level <= 2 ? 2.0 : 0.5;
+
   for(let i = 0; i < 4; i++) {
     const def = GHOST_DEFS[i];
     const sp = mazeData.ghostSpawns[i] || mazeData.ghostSpawns[0];
+    // Lv に応じて活動体を絞る (残りは常時 housed のまま = 出てこない)
+    const isActive = i < activeCount;
     state.ghosts.push({
       x: sp.x, y: sp.y, px: sp.x, py: sp.y,
       dir: {x:0, y:-1},
       color: def.color, name: def.name, nameJa: def.nameJa,
       behavior: def.behavior,
-      speed: 4.4 + state.level * 0.15,
-      state: "housed",  // housed | exiting | out | frightened | eaten
-      exitDelay: i * 1.2 + 0.5,
+      speed: baseSpeed,
+      state: "housed",
+      exitDelay: isActive ? initialDelay + i * delayStep : 9999,   // 非アクティブは実質出てこない
+      active: isActive,
       _cell: null,
-      phaseUntil: 0,  // violet の壁抜け
+      phaseUntil: 0,
       lastPhaseAt: 0,
     });
   }
@@ -1175,15 +1192,19 @@ function updateGhost(g, dt) {
           targetX = p.px + p.dir.x * 4;
           targetY = p.py + p.dir.y * 4;
         } else if(g.behavior === "flank") {
-          // 挟撃: プレイヤーの反対側を狙う
           const bx = state.ghosts[0]?.px || 0, by = state.ghosts[0]?.py || 0;
           targetX = p.px + (p.px - bx);
           targetY = p.py + (p.py - by);
         } else if(g.behavior === "phase") {
-          // 壁抜け中は最短、それ以外はランダム性高め
           if(!canPhaseWall && Math.random() < 0.35) {
             chosen = options[Math.floor(Math.random() * options.length)];
           }
+        }
+        // 低レベルは"気まぐれ"が強い (追跡精度を下げる)
+        // Lv1: 60% ランダム / Lv2: 40% / Lv3: 25% / Lv4+: 8%
+        const randomness = Math.max(0.08, 0.7 - state.level * 0.15);
+        if(!chosen && Math.random() < randomness && options.length > 1) {
+          chosen = pick(options);
         }
         if(!chosen) {
           let bestD = Infinity;
@@ -1193,8 +1214,6 @@ function updateGhost(g, dt) {
             const dd = dx*dx + dy*dy;
             if(dd < bestD) { bestD = dd; chosen = o; }
           }
-          // 気まぐれ
-          if(Math.random() < 0.06 && options.length > 1) chosen = pick(options);
         }
       }
       g.dir = chosen || options[0];
