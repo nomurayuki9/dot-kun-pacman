@@ -324,6 +324,48 @@
     box-shadow:0 0 10px rgba(255,233,59,0.3);
   }
 
+  /* Character select */
+  .char-select {
+    display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin:6px 0 14px;
+  }
+  .char-btn {
+    aspect-ratio:1/1;
+    background:rgba(255,255,255,0.05);
+    border:2px solid rgba(255,255,255,0.15);
+    border-radius:12px;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    padding:0;
+    position:relative;
+    transition:all 0.15s;
+    font-family:inherit;
+  }
+  .char-btn:hover { border-color:rgba(255,255,255,0.4); transform:translateY(-2px); }
+  .char-btn.selected {
+    border-color:var(--pacman);
+    background:rgba(255,233,59,0.12);
+    box-shadow:0 0 14px rgba(255,233,59,0.4);
+    transform:translateY(-2px);
+  }
+  .char-btn .cbody {
+    width:32px; height:32px;
+    border-radius:50%;
+    box-shadow:0 0 10px currentColor;
+    position:relative;
+    clip-path:polygon(50% 50%,100% 25%,100% 75%);
+  }
+  .char-btn .cname {
+    position:absolute;
+    bottom:-2px; left:0; right:0;
+    font-size:9px;
+    color:#b0b0d0;
+    text-align:center;
+  }
+  @media (max-width:720px), (pointer:coarse) {
+    .char-select { grid-template-columns:repeat(3,1fr); }
+    .char-btn .cbody { width:26px; height:26px; }
+  }
+
   /* Mode select */
   .mode-select {
     display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0;
@@ -445,6 +487,9 @@
         </div>
 
         <div class="highscore" id="titleHi"></div>
+
+        <div style="color:#8a8ab5;font-size:10px;letter-spacing:0.15em;margin-bottom:6px;">キャラクター選択</div>
+        <div class="char-select" id="charSelect"></div>
 
         <input class="name-input" id="playerName" type="text" maxlength="8" placeholder="なまえ (任意)" />
 
@@ -950,6 +995,25 @@ function unlockAchievement(id) {
 }
 
 // ============================================================
+//  Characters 定義 (キャラクター選択)
+// ============================================================
+const CHARACTERS = [
+  {id:"kun",     name:"ドットくん",     color:"#ffe93b", desc:"バランス型",       bonus:null},
+  {id:"sakura",  name:"さくらちゃん",   color:"#ff8ec7", desc:"すばやい (+15%)",   bonus:"speed"},
+  {id:"sky",     name:"スカイ",         color:"#5eb8ff", desc:"磁石が強い",         bonus:"magnet"},
+  {id:"mint",    name:"ミント",         color:"#5bff9d", desc:"ライフ +1 スタート", bonus:"life"},
+  {id:"honey",   name:"ハニー",         color:"#ffa64d", desc:"パワーエサ延長",     bonus:"pellet"},
+  {id:"kuro",    name:"クロミ",         color:"#a05bff", desc:"ダッシュ強化",       bonus:"dash"},
+];
+
+const CHAR_KEY = "dot-kun-v2-char";
+function loadChar() {
+  const id = loadStorage(CHAR_KEY, "kun");
+  return CHARACTERS.find(c => c.id === id) || CHARACTERS[0];
+}
+function saveChar(id) { saveStorage(CHAR_KEY, id); }
+
+// ============================================================
 //  Items 定義
 // ============================================================
 const ITEM_TYPES = [
@@ -977,12 +1041,14 @@ let state;
 let mazeData;
 
 function resetGame(mode) {
+  const char = loadChar();
   state = {
     running: false, paused: false, over: false, cleared: false, dying: false,
-    mode: mode || "normal",   // "normal" or "endless"
+    mode: mode || "normal",
     level: 1,
     score: 0,
-    lives: 3,
+    lives: (char.bonus === "life") ? 4 : 3,
+    character: char,
     dotsLeft: 0,
     dotsEaten: 0,
     itemsCollected: 0,
@@ -1007,11 +1073,12 @@ function resetGame(mode) {
       x: 0, y: 0, px: 0, py: 0,
       dir: {x:0, y:0}, nextDir: {x:0, y:0},
       r: 14, hp: 100, maxHp: 100,
-      speed: 6.0,
+      speed: 6.0 * (char.bonus === "speed" ? 1.15 : 1),
       mouth: 0,
       hurtFlash: 0, invul: 0,
       deathTimer: 0,
       dashCd: 0, dashTimer: 0,
+      dashCdMax: char.bonus === "dash" ? 1.5 : 3,
     },
     ghosts: [],
     items: [],
@@ -1374,7 +1441,7 @@ function update(dt) {
   // ダッシュ (キーボード Shift)
   const dashActive = p.dashTimer > 0;
   if(keys.has("shift") && p.dashCd <= 0 && (p.dir.x || p.dir.y)) {
-    p.dashCd = 3;
+    p.dashCd = p.dashCdMax || 3;
     p.dashTimer = 0.3;
   }
   if(p.dashTimer > 0) p.dashTimer -= dt;
@@ -1442,8 +1509,10 @@ function update(dt) {
       mazeData.grid[gy][gx] = "empty";
       state.score += 50 * (state.buffs.x2 > 0 ? 2 : 1);
       state.dotsLeft--;
-      state.frightenedUntil = state.tick + 10;
-      state.ghostChain = 200;
+      // ハニーはパワーエサ効果 +5秒
+      const pelletDur = 10 + (state.character?.bonus === "pellet" ? 5 : 0);
+      state.frightenedUntil = state.tick + pelletDur;
+      state.ghostChain = state.character?.bonus === "sky" ? 400 : 200;
       state.ghostEatChain = 0;
       for(const g of state.ghosts) {
         if(g.state === "out") {
@@ -1481,12 +1550,13 @@ function update(dt) {
     }
   }
 
-  // お化け更新
-  for(const g of state.ghosts) updateGhost(g, dt);
+  // お化け更新 (非アクティブは完全スキップ)
+  for(const g of state.ghosts) { if(g.active) updateGhost(g, dt); }
 
-  // お化け衝突
+  // お化け衝突 (非アクティブは無視)
   const invincible = state.buffs.invincible > 0;
   for(const g of state.ghosts) {
+    if(!g.active) continue;
     const d = Math.hypot(g.px - p.px, g.py - p.py);
     if(d < 0.65) {
       if(g.state === "frightened") {
@@ -1609,8 +1679,8 @@ function render() {
     }
   }
 
-  // お化け
-  for(const g of state.ghosts) drawGhost(g);
+  // お化け (非アクティブは描画しない)
+  for(const g of state.ghosts) { if(g.active) drawGhost(g); }
 
   // パーティクル
   for(const pt of state.particles) {
@@ -1673,11 +1743,13 @@ function drawPacman() {
   const r = CELL * 0.42;
   const invincible = state.buffs.invincible > 0;
 
+  const baseColor = state.character?.color || "#ffe93b";
+
   if(state.dying) {
     const t = state.pac.deathTimer / 1.2;
     const startA = -Math.PI/2 + t * Math.PI;
     const endA = -Math.PI/2 - t * Math.PI;
-    ctx.fillStyle = "#ffe93b";
+    ctx.fillStyle = baseColor;
     ctx.beginPath();
     ctx.moveTo(cx, cy);
     ctx.arc(cx, cy, r * (1 - t * 0.3), startA, endA, false);
@@ -1692,8 +1764,8 @@ function drawPacman() {
   else if(p.dir.y === -1) ang = -Math.PI/2;
   else if(p.dir.y === 1) ang = Math.PI/2;
 
-  // 無敵時はレインボー
-  let color = "#ffe93b";
+  // 無敵時はレインボー、通常はキャラクター色
+  let color = baseColor;
   if(invincible) {
     const hue = (state.tick * 200) % 360;
     color = `hsl(${hue}, 100%, 60%)`;
@@ -1964,6 +2036,26 @@ function renderAchievements() {
 // ============================================================
 //  Button bindings
 // ============================================================
+// キャラクター選択 UI 初期化
+function renderCharSelect() {
+  const cur = loadChar();
+  const box = document.getElementById("charSelect");
+  box.innerHTML = "";
+  CHARACTERS.forEach(c => {
+    const btn = document.createElement("button");
+    btn.className = "char-btn" + (c.id === cur.id ? " selected" : "");
+    btn.setAttribute("data-cid", c.id);
+    btn.title = `${c.name} — ${c.desc}`;
+    btn.innerHTML = `<div class="cbody" style="background:${c.color};color:${c.color}"></div><span class="cname">${c.name}</span>`;
+    btn.addEventListener("click", () => {
+      saveChar(c.id);
+      renderCharSelect();
+    });
+    box.appendChild(btn);
+  });
+}
+renderCharSelect();
+
 let selectedMode = "normal";
 document.getElementById("modeNormal").addEventListener("click", () => {
   selectedMode = "normal";
