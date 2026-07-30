@@ -1,9 +1,0 @@
-{
- "pfp": "PFP-173",
- "delivered_url": "https://dot-kun-pacman.vercel.app",
- "method": "vercel",
- "permanence": "permanent",
- "is_permanent": true,
- "is_ephemeral": false,
- "reason": "恒久ホスティング (.vercel.app) — 24時間365日 稼働・URL 固定"
-}
