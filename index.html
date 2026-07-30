@@ -684,7 +684,57 @@ function generateMaze(seed) {
   // プレイヤー開始位置を確保 (下部中央)
   const spawnY = h - 2;
   const spawnX = 9;
-  if(g[spawnY][spawnX] === 0) g[spawnY][spawnX] = 1;
+  if(g[spawnY][spawnX] === 0) g[spawnY][spawnX] = 2;
+
+  // 連結性チェック: プレイヤー開始点から全ての通路セルへ到達可能か確認
+  // 到達不能なセルがあれば、壁を壊して繋ぐ
+  const isCorridor = (v) => v === 1 || v === 2 || v === 3 || v === 4 || v === 5;
+  const passable = (x, y) => x >= 0 && x < w && y >= 0 && y < h && isCorridor(g[y][x]);
+
+  const bfsReachable = (sx, sy) => {
+    const seen = Array.from({length: h}, () => new Array(w).fill(false));
+    if(!passable(sx, sy)) return seen;
+    const q = [[sx, sy]];
+    seen[sy][sx] = true;
+    while(q.length) {
+      const [cx, cy] = q.shift();
+      for(const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+        const nx = cx + dx, ny = cy + dy;
+        if(passable(nx, ny) && !seen[ny][nx]) {
+          seen[ny][nx] = true;
+          q.push([nx, ny]);
+        }
+      }
+    }
+    return seen;
+  };
+
+  // 最大 30 回まで: 到達不能な通路を見つけて、隣接壁を破壊してつなげる
+  for(let iter = 0; iter < 30; iter++) {
+    const reachable = bfsReachable(spawnX, spawnY);
+    let broken = false;
+
+    // 到達不能な通路セルを列挙
+    for(let y = 1; y < h - 1 && !broken; y++) {
+      for(let x = 1; x < w - 1 && !broken; x++) {
+        if(!isCorridor(g[y][x]) || reachable[y][x]) continue;
+        // 到達可能な通路と隣接する壁を通じて繋がるか
+        for(const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+          const wx = x + dx, wy = y + dy;      // 壁候補
+          const nx = x + dx * 2, ny = y + dy * 2;   // 2セル先の通路
+          if(wx <= 0 || wx >= w - 1 || wy <= 0 || wy >= h - 1) continue;
+          if(g[wy][wx] !== 0) continue;   // 壁でなければスキップ
+          if(!passable(nx, ny) || !reachable[ny]?.[nx]) continue;
+          // 壁を破壊してドットにする
+          g[wy][wx] = 2;
+          broken = true;
+          break;
+        }
+      }
+    }
+
+    if(!broken) break;   // 全通路が到達可能になった
+  }
 
   // 実グリッドに変換
   const grid = Array.from({length: h}, (_, y) =>
@@ -698,6 +748,16 @@ function generateMaze(seed) {
       return "empty"; // house interior
     })
   );
+
+  // 最終確認: 到達不能なドット/ペレットは壁に変換 (念のため)
+  const finalReach = bfsReachable(spawnX, spawnY);
+  for(let y = 0; y < h; y++) {
+    for(let x = 0; x < w; x++) {
+      if((grid[y][x] === "dot" || grid[y][x] === "pellet") && !finalReach[y][x]) {
+        grid[y][x] = "empty";
+      }
+    }
+  }
 
   return {
     grid,
