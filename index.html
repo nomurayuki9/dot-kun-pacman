@@ -1,308 +1,398 @@
 <!--
-  ドットくん - Pac-Man 風アクション
-  シンプル操作: 矢印キー or WASD で移動、ドットを全部食べればステージクリア。
-  単一 HTML ファイル・外部依存ゼロ・ダブルクリックで即プレイ。
+  ドットくん - Pac-Man 風アクション (v2.0)
+  自動生成迷路・4種ゴーストAI・アイテム・ランキング・実績・コンボ・星3評価
+  単一 HTML・外部依存ゼロ・PC/スマホ両対応
 -->
 <meta charset="utf-8">
-<title>ドットくん - パックマン風ゲーム</title>
+<title>ドットくん - パックマン風ゲーム v2</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#000">
 <style>
   :root {
-    --bg-0: #000;
-    --bg-1: #050510;
-    --wall: #2121ff;
-    --wall-inner: #0000c0;
-    --dot: #ffb897;
-    --pellet: #fff;
-    --pacman: #ffe93b;
-    --ghost-r: #ff2b2b;
-    --ghost-p: #ffb8ff;
-    --ghost-c: #00e5ff;
-    --ghost-o: #ffa64d;
-    --scared: #2121ff;
-    --scared-flash: #fff;
-    --text: #fff;
-    --accent: #ffe93b;
+    --bg-0:#000; --bg-1:#050510;
+    --wall:#2121ff; --wall-inner:#0000c0;
+    --dot:#ffb897; --pellet:#fff;
+    --pacman:#ffe93b;
+    --ghost-r:#ff2b2b; --ghost-p:#ffb8ff; --ghost-c:#00e5ff; --ghost-o:#ffa64d; --ghost-v:#a05bff;
+    --scared:#2121ff; --scared-flash:#fff;
+    --text:#fff; --accent:#ffe93b;
+    --item-inv:#ffe93b; --item-slow:#00e5ff; --item-freeze:#a05bff; --item-x2:#ff2bd6; --item-life:#5bff9d;
   }
-  * { box-sizing: border-box; }
+  * { box-sizing:border-box; }
   html, body {
-    margin: 0; padding: 0; min-height: 100%;
-    background: linear-gradient(180deg, #000, #08081a);
-    color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Yu Gothic UI", sans-serif;
-    overflow: hidden;
-    user-select: none;
+    margin:0; padding:0; min-height:100%;
+    background:linear-gradient(180deg,#000,#08081a);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic UI","Segoe UI",sans-serif;
+    overflow:hidden; user-select:none;
+    -webkit-tap-highlight-color:transparent;
   }
   #stage {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    padding: 12px;
+    position:fixed; inset:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:8px; padding:8px;
   }
 
+  /* HUD */
   .hud {
-    display: grid;
-    grid-template-columns: repeat(4, auto);
-    gap: 16px 28px;
-    padding: 10px 20px;
-    background: rgba(255,255,255,0.04);
-    border-radius: 10px;
-    font-size: 15px;
+    display:grid;
+    grid-template-columns:repeat(4,auto);
+    gap:10px 20px;
+    padding:8px 16px;
+    background:rgba(255,255,255,0.04);
+    border-radius:10px;
+    font-size:13px;
   }
-  .hud .cell { display: flex; flex-direction: column; align-items: center; }
-  .hud .label { color: #8a8ab5; font-size: 10px; letter-spacing: 0.15em; }
-  .hud .value { color: var(--accent); font-weight: 700; font-size: 20px; text-shadow: 0 0 8px var(--accent); }
-  .hud .value.small { font-size: 15px; }
-  .lives { display: flex; gap: 4px; align-items: center; margin-top: 2px; }
+  .hud .cell { display:flex; flex-direction:column; align-items:center; }
+  .hud .label { color:#8a8ab5; font-size:9px; letter-spacing:0.15em; }
+  .hud .value { color:var(--accent); font-weight:700; font-size:18px; text-shadow:0 0 8px var(--accent); }
+  .hud .value.small { font-size:14px; }
+  .lives { display:flex; gap:3px; align-items:center; margin-top:2px; }
   .life-icon {
-    width: 16px; height: 16px;
-    background: radial-gradient(circle at 60% 40%, var(--pacman), #c99400);
-    border-radius: 50%;
-    clip-path: polygon(50% 50%, 100% 25%, 100% 75%);
-    box-shadow: 0 0 6px var(--pacman);
+    width:14px; height:14px;
+    background:radial-gradient(circle at 60% 40%,var(--pacman),#c99400);
+    border-radius:50%;
+    clip-path:polygon(50% 50%,100% 25%,100% 75%);
+    box-shadow:0 0 6px var(--pacman);
   }
 
+  /* Combo/effect status bar */
+  .status-bar {
+    display:flex; gap:8px;
+    padding:4px 10px;
+    background:rgba(0,0,0,0.4);
+    border-radius:8px;
+    min-height:24px;
+    align-items:center;
+    font-size:11px;
+    flex-wrap:wrap;
+    justify-content:center;
+  }
+  .combo-badge {
+    background:linear-gradient(90deg,var(--pacman),#ff8a00);
+    color:#000;
+    font-weight:700;
+    padding:2px 8px;
+    border-radius:10px;
+    animation:pulse 0.3s ease;
+    box-shadow:0 0 10px rgba(255,138,0,0.6);
+  }
+  @keyframes pulse { 0%{transform:scale(1);} 50%{transform:scale(1.15);} 100%{transform:scale(1);} }
+  .buff-badge {
+    padding:2px 6px;
+    border-radius:8px;
+    font-size:10px;
+    font-weight:700;
+    border:1px solid currentColor;
+    box-shadow:0 0 8px currentColor;
+  }
+  .buff-invincible{color:var(--item-inv);}
+  .buff-slow{color:var(--item-slow);}
+  .buff-freeze{color:var(--item-freeze);}
+  .buff-x2{color:var(--item-x2);}
+
+  /* Game canvas wrap */
   #wrap {
-    position: relative;
-    box-shadow: 0 0 40px rgba(33,33,255,0.35), 0 0 80px rgba(255,233,59,0.15);
-    border-radius: 6px;
-    /* 迷路の内部解像度 608x672 (aspect 0.905) */
-    aspect-ratio: 608 / 672;
-    /* 画面に収まる最大サイズを計算: 幅は画面幅・高さは画面高から HUD(80) と 十字パッド(240) と余白(40) を引いた分 */
-    width: min(608px, calc(100vw - 8px), calc((100vh - 360px) * 608 / 672));
+    position:relative;
+    box-shadow:0 0 40px rgba(33,33,255,0.35),0 0 80px rgba(255,233,59,0.15);
+    border-radius:6px;
+    aspect-ratio:19/21;
+    width:min(608px,calc(100vw - 16px),calc((100vh - 380px) * 19 / 21));
   }
   canvas {
-    display: block;
-    background: var(--bg-0);
-    border-radius: 4px;
-    image-rendering: pixelated;
-    width: 100%;
-    height: 100%;
+    display:block;
+    background:var(--bg-0);
+    border-radius:4px;
+    image-rendering:pixelated;
+    width:100%; height:100%;
   }
 
+  /* Touch pad */
+  .touch-pad {
+    position:relative;
+    width:200px; height:200px;
+    margin-top:4px;
+    touch-action:none;
+    user-select:none;
+    -webkit-user-select:none;
+    -webkit-touch-callout:none;
+  }
+  .touch-pad button {
+    position:absolute;
+    width:60px; height:60px;
+    background:rgba(255,233,59,0.15);
+    border:2px solid rgba(255,233,59,0.5);
+    border-radius:14px;
+    color:var(--pacman);
+    font-size:28px;
+    line-height:1;
+    font-family:inherit;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 0 12px rgba(255,233,59,0.25);
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+    transition:transform 0.05s,background 0.1s;
+  }
+  .touch-pad button:active {
+    background:rgba(255,233,59,0.4);
+    transform:scale(0.92);
+    box-shadow:0 0 20px rgba(255,233,59,0.6);
+  }
+  .touch-pad .up    { top:4px;    left:70px; }
+  .touch-pad .down  { bottom:4px; left:70px; }
+  .touch-pad .left  { left:4px;   top:70px; }
+  .touch-pad .right { right:4px;  top:70px; }
+  .touch-pad .pause {
+    top:70px; left:70px;
+    background:rgba(0,229,255,0.15);
+    border-color:rgba(0,229,255,0.5);
+    color:var(--ghost-c);
+    font-size:16px;
+    box-shadow:0 0 12px rgba(0,229,255,0.2);
+  }
+  .touch-pad .pause:active { background:rgba(0,229,255,0.35); box-shadow:0 0 20px rgba(0,229,255,0.5); }
+
   .instructions {
-    display: flex;
-    gap: 20px;
-    font-size: 13px;
-    color: #a0a0c0;
+    display:flex; gap:20px; font-size:12px; color:#a0a0c0;
   }
   .instructions kbd {
-    display: inline-block;
-    padding: 3px 7px;
-    background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 5px;
-    color: var(--text);
-    font-family: ui-monospace, monospace;
-    font-size: 11px;
-    margin: 0 2px;
+    display:inline-block; padding:3px 7px;
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.15);
+    border-radius:5px; color:var(--text);
+    font-family:ui-monospace,monospace; font-size:11px; margin:0 2px;
   }
 
   /* Overlays */
   .overlay {
-    position: absolute;
-    inset: 0;
-    display: none;
-    place-items: center;
-    background: rgba(0,0,0,0.7);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    z-index: 10;
-    border-radius: 4px;
+    position:absolute; inset:0;
+    display:none; place-items:center;
+    background:rgba(0,0,0,0.72);
+    backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+    z-index:10;
+    border-radius:4px;
+    overflow-y:auto;
   }
-  .overlay.show { display: grid; }
+  .overlay.show { display:grid; }
   .panel {
-    background: linear-gradient(180deg, #0a0a1e, #050515);
-    border: 2px solid var(--wall);
-    border-radius: 12px;
-    padding: 28px 36px;
-    text-align: center;
-    min-width: 360px;
-    box-shadow: 0 0 30px rgba(33,33,255,0.4), inset 0 0 20px rgba(33,33,255,0.15);
+    background:linear-gradient(180deg,#0a0a1e,#050515);
+    border:2px solid var(--wall);
+    border-radius:14px;
+    padding:24px 28px;
+    text-align:center;
+    min-width:320px;
+    max-width:min(560px,95%);
+    max-height:95%;
+    overflow-y:auto;
+    box-shadow:0 0 30px rgba(33,33,255,0.4),inset 0 0 20px rgba(33,33,255,0.15);
   }
   .panel h1 {
-    margin: 0 0 6px;
-    font-size: 34px;
-    color: var(--pacman);
-    text-shadow: 0 0 16px var(--pacman);
-    letter-spacing: 0.06em;
+    margin:0 0 4px; font-size:30px;
+    color:var(--pacman);
+    text-shadow:0 0 16px var(--pacman);
+    letter-spacing:0.06em;
   }
   .panel h2 {
-    margin: 0 0 20px;
-    font-size: 14px;
-    color: #8a8ab5;
-    font-weight: 400;
-    letter-spacing: 0.2em;
+    margin:0 0 16px; font-size:12px; color:#8a8ab5;
+    font-weight:400; letter-spacing:0.2em;
   }
-  .panel .sub { color: #b0b0d0; font-size: 13px; margin-bottom: 18px; line-height: 1.7; }
+  .panel .sub { color:#b0b0d0; font-size:12px; margin-bottom:14px; line-height:1.7; }
   .btn {
-    padding: 12px 28px;
-    background: linear-gradient(90deg, var(--pacman), #ffb700);
-    border: none;
-    border-radius: 8px;
-    color: #000;
-    font-weight: 700;
-    font-size: 15px;
-    letter-spacing: 0.1em;
-    cursor: pointer;
-    box-shadow: 0 0 14px rgba(255,233,59,0.4);
-    transition: transform 0.1s, box-shadow 0.2s;
-    font-family: inherit;
+    padding:11px 22px;
+    background:linear-gradient(90deg,var(--pacman),#ffb700);
+    border:none; border-radius:8px;
+    color:#000; font-weight:700; font-size:14px;
+    letter-spacing:0.1em; cursor:pointer;
+    box-shadow:0 0 14px rgba(255,233,59,0.4);
+    transition:transform 0.1s,box-shadow 0.2s;
+    font-family:inherit;
+    margin:4px;
   }
-  .btn:hover { transform: translateY(-2px); box-shadow: 0 0 24px rgba(255,233,59,0.7); }
-  .btn:active { transform: translateY(0); }
+  .btn:hover { transform:translateY(-2px); box-shadow:0 0 24px rgba(255,233,59,0.7); }
+  .btn:active { transform:translateY(0); }
+  .btn.secondary {
+    background:rgba(255,255,255,0.08); color:var(--text); box-shadow:none;
+  }
+  .btn.secondary:hover { background:rgba(255,255,255,0.14); box-shadow:none; }
+
+  /* Ghost legend on title */
+  .ghost-legend {
+    display:grid; grid-template-columns:repeat(2,1fr);
+    gap:6px 20px; margin:12px 0;
+    text-align:left; font-size:11px; color:#b0b0d0;
+  }
+  .ghost-legend .g { display:flex; align-items:center; gap:6px; }
+  .ghost-legend .d { width:11px; height:11px; border-radius:50%; }
+
+  /* Items legend */
+  .items-legend {
+    display:grid; grid-template-columns:repeat(2,1fr);
+    gap:6px 20px; margin:10px 0 14px;
+    text-align:left; font-size:11px; color:#b0b0d0;
+  }
+  .items-legend .it { display:flex; align-items:center; gap:6px; }
+  .items-legend .ic {
+    width:14px; height:14px; border-radius:3px;
+    display:inline-flex; align-items:center; justify-content:center;
+    font-size:10px; color:#000; font-weight:700;
+  }
 
   .highscore {
-    color: var(--pacman);
-    text-shadow: 0 0 8px var(--pacman);
-    font-weight: 700;
-    margin: 10px 0;
+    color:var(--pacman);
+    text-shadow:0 0 8px var(--pacman);
+    font-weight:700; margin:8px 0; font-size:14px;
   }
 
-  .ghost-legend {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px 24px;
-    margin: 14px 0;
-    text-align: left;
-    font-size: 12px;
-    color: #b0b0d0;
-  }
-  .ghost-legend .g { display: flex; align-items: center; gap: 6px; }
-  .ghost-legend .d {
-    width: 12px; height: 12px; border-radius: 50%;
-  }
-
+  /* Center message flash */
   .center-msg {
-    position: absolute;
-    left: 0; right: 0;
-    top: 40%;
-    text-align: center;
-    font-size: 40px;
-    font-weight: 800;
-    color: var(--pacman);
-    text-shadow: 0 0 20px var(--pacman);
-    opacity: 0;
-    transition: opacity 0.3s;
-    pointer-events: none;
-    z-index: 5;
+    position:absolute; left:0; right:0; top:35%;
+    text-align:center;
+    font-size:32px; font-weight:800;
+    color:var(--pacman); text-shadow:0 0 20px var(--pacman);
+    opacity:0; transition:opacity 0.3s; pointer-events:none;
+    z-index:5;
   }
-  .center-msg.show { opacity: 1; }
+  .center-msg.show { opacity:1; }
 
-  /* Touch controls - スマホ用十字ボタン */
-  .touch-pad {
-    display: none;
-    position: relative;
-    width: 220px;
-    height: 220px;
-    margin-top: 4px;
-    touch-action: none;
-    user-select: none;
-    -webkit-user-select: none;
-    -webkit-touch-callout: none;
+  /* Stars */
+  .stars { display:flex; gap:8px; justify-content:center; margin:10px 0; font-size:36px; }
+  .stars .star { color:#333; text-shadow:0 0 8px #333; transition:all 0.3s; }
+  .stars .star.on { color:var(--pacman); text-shadow:0 0 16px var(--pacman); animation:starPop 0.5s ease; }
+  @keyframes starPop { 0%{transform:scale(0);} 50%{transform:scale(1.5);} 100%{transform:scale(1);} }
+
+  /* Ranking table */
+  .ranking {
+    display:grid;
+    grid-template-columns:auto 1fr auto auto;
+    gap:6px 12px;
+    text-align:left;
+    font-size:12px;
+    margin:12px 0;
+    max-height:200px;
+    overflow-y:auto;
   }
-  .touch-pad button {
-    position: absolute;
-    width: 68px; height: 68px;
-    background: rgba(255,233,59,0.15);
-    border: 2px solid rgba(255,233,59,0.5);
-    border-radius: 16px;
-    color: var(--pacman);
-    font-size: 32px;
-    line-height: 1;
-    font-family: inherit;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 0 12px rgba(255,233,59,0.25);
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-    transition: transform 0.05s, background 0.1s;
+  .ranking .rank { color:var(--accent); font-weight:700; font-family:ui-monospace,monospace; }
+  .ranking .name { color:var(--text); }
+  .ranking .score { color:var(--pacman); text-align:right; font-family:ui-monospace,monospace; }
+  .ranking .stars-mini { color:var(--pacman); font-size:10px; }
+  .ranking .header { color:#8a8ab5; font-size:10px; letter-spacing:0.1em; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:4px; }
+
+  /* Achievement list */
+  .achievements {
+    display:grid; grid-template-columns:1fr 1fr; gap:6px;
+    text-align:left; font-size:11px;
+    margin:8px 0;
   }
-  .touch-pad button:active {
-    background: rgba(255,233,59,0.4);
-    transform: scale(0.92);
-    box-shadow: 0 0 20px rgba(255,233,59,0.6);
+  .ach {
+    padding:6px 8px;
+    background:rgba(255,255,255,0.04);
+    border-left:3px solid #444;
+    border-radius:4px;
+    opacity:0.5;
   }
-  .touch-pad .up    { top: 4px;    left: 76px; }
-  .touch-pad .down  { bottom: 4px; left: 76px; }
-  .touch-pad .left  { left: 4px;   top: 76px; }
-  .touch-pad .right { right: 4px;  top: 76px; }
-  .touch-pad .pause {
-    top: 76px; left: 76px;
-    width: 68px; height: 68px;
-    background: rgba(0,229,255,0.15);
-    border-color: rgba(0,229,255,0.5);
-    color: var(--ghost-c);
-    font-size: 18px;
-    box-shadow: 0 0 12px rgba(0,229,255,0.2);
+  .ach.done {
+    opacity:1;
+    border-left-color:var(--pacman);
+    background:rgba(255,233,59,0.08);
   }
-  .touch-pad .pause:active {
-    background: rgba(0,229,255,0.35);
-    box-shadow: 0 0 20px rgba(0,229,255,0.5);
+  .ach .t { font-weight:700; color:var(--text); }
+  .ach .d { color:#8a8ab5; font-size:10px; }
+
+  /* Name input */
+  .name-input {
+    padding:10px 14px;
+    font-size:16px;
+    background:rgba(0,0,0,0.5);
+    border:2px solid var(--wall);
+    border-radius:8px;
+    color:var(--pacman);
+    text-align:center;
+    font-family:inherit;
+    width:200px;
+    margin:8px;
+  }
+  .name-input:focus {
+    outline:none;
+    border-color:var(--pacman);
+    box-shadow:0 0 10px rgba(255,233,59,0.3);
   }
 
-  /* タッチ対応デバイスでのみ十字ボタンを表示 */
-  @media (pointer: coarse), (max-width: 720px) {
-    .touch-pad { display: block; }
-    .instructions { display: none; }
+  /* Mode select */
+  .mode-select {
+    display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0;
+  }
+  .mode-btn {
+    padding:12px 8px;
+    background:rgba(0,229,255,0.1);
+    border:2px solid rgba(0,229,255,0.4);
+    border-radius:10px;
+    color:var(--ghost-c);
+    font-weight:700;
+    cursor:pointer;
+    font-family:inherit;
+    font-size:13px;
+  }
+  .mode-btn.selected {
+    background:rgba(255,233,59,0.15);
+    border-color:var(--pacman);
+    color:var(--pacman);
+    box-shadow:0 0 12px rgba(255,233,59,0.4);
+  }
+  .mode-btn .desc { display:block; font-size:9px; color:#8a8ab5; margin-top:4px; font-weight:400; }
+
+  /* Mobile adjustments */
+  @media (pointer:coarse), (max-width:720px) {
+    .instructions { display:none; }
     #stage {
-      gap: 4px;
-      padding: 4px;
-      justify-content: flex-start;
-      padding-top: env(safe-area-inset-top, 4px);
-      padding-bottom: env(safe-area-inset-bottom, 4px);
+      gap:4px; padding:4px;
+      justify-content:flex-start;
+      padding-top:env(safe-area-inset-top,4px);
+      padding-bottom:env(safe-area-inset-bottom,4px);
     }
-    .hud { padding: 4px 8px; gap: 4px 10px; font-size: 11px; }
-    .hud .value { font-size: 15px; }
-    .hud .value.small { font-size: 11px; }
-    .hud .barwrap { width: 80px; height: 8px; }
-    .life-icon { width: 12px; height: 12px; }
-
-    /* スマホ縦持ちのキャンバスは HUD (55) + パッド (180) + 余白 (40) を差し引いて収める */
+    .hud { padding:4px 8px; gap:4px 10px; font-size:11px; }
+    .hud .value { font-size:15px; }
+    .hud .value.small { font-size:11px; }
+    .life-icon { width:11px; height:11px; }
+    .status-bar { padding:2px 8px; font-size:10px; min-height:20px; }
     #wrap {
-      width: min(calc(100vw - 8px), calc((100vh - 280px) * 608 / 672));
+      width:min(calc(100vw - 8px),calc((100vh - 300px) * 19 / 21));
     }
-
-    /* スマホ縦持ちで確実に収まる十字パッド (小さめ) */
-    .touch-pad {
-      width: 180px;
-      height: 180px;
-      margin-top: 2px;
-    }
-    .touch-pad button { width: 56px; height: 56px; font-size: 26px; border-radius: 14px; }
-    .touch-pad .up    { top: 2px;    left: 62px; }
-    .touch-pad .down  { bottom: 2px; left: 62px; }
-    .touch-pad .left  { left: 2px;   top: 62px; }
-    .touch-pad .right { right: 2px;  top: 62px; }
-    .touch-pad .pause { top: 62px; left: 62px; width: 56px; height: 56px; font-size: 15px; }
+    .touch-pad { width:180px; height:180px; margin-top:2px; }
+    .touch-pad button { width:54px; height:54px; font-size:24px; border-radius:12px; }
+    .touch-pad .up { top:2px; left:63px; }
+    .touch-pad .down { bottom:2px; left:63px; }
+    .touch-pad .left { left:2px; top:63px; }
+    .touch-pad .right { right:2px; top:63px; }
+    .touch-pad .pause { top:63px; left:63px; width:54px; height:54px; font-size:14px; }
+    .panel { padding:16px 18px; }
+    .panel h1 { font-size:22px; }
+    .achievements { grid-template-columns:1fr; }
   }
 
-  /* 横向きスマホ (低身長) 用の追加最適化 */
-  @media (pointer: coarse) and (orientation: landscape) and (max-height: 500px) {
-    #stage { flex-direction: row; align-items: center; }
-    .touch-pad { width: 160px; height: 160px; }
-    .touch-pad button { width: 50px; height: 50px; font-size: 22px; }
-    .touch-pad .up    { top: 2px;    left: 55px; }
-    .touch-pad .down  { bottom: 2px; left: 55px; }
-    .touch-pad .left  { left: 2px;   top: 55px; }
-    .touch-pad .right { right: 2px;  top: 55px; }
-    .touch-pad .pause { top: 55px; left: 55px; width: 50px; height: 50px; font-size: 13px; }
-    #wrap { width: min(calc(100vh - 20px) * 608 / 672, calc(100vw - 180px)); }
+  @media (pointer:coarse) and (orientation:landscape) and (max-height:500px) {
+    #stage { flex-direction:row; align-items:center; gap:6px; }
+    .touch-pad { width:150px; height:150px; }
+    .touch-pad button { width:46px; height:46px; font-size:20px; }
+    .touch-pad .up { top:2px; left:52px; }
+    .touch-pad .down { bottom:2px; left:52px; }
+    .touch-pad .left { left:2px; top:52px; }
+    .touch-pad .right { right:2px; top:52px; }
+    .touch-pad .pause { top:52px; left:52px; width:46px; height:46px; font-size:12px; }
+    #wrap { width:min(calc(100vh - 20px) * 19 / 21,calc(100vw - 180px)); }
   }
 </style>
 
 <div id="stage">
   <div class="hud">
     <div class="cell"><span class="label">SCORE</span><span class="value" id="score">0</span></div>
-    <div class="cell"><span class="label">HI-SCORE</span><span class="value small" id="hi">0</span></div>
+    <div class="cell"><span class="label">HI</span><span class="value small" id="hi">0</span></div>
     <div class="cell"><span class="label">LIFE</span><span class="value small lives" id="lives"></span></div>
     <div class="cell"><span class="label">LEVEL</span><span class="value" id="level">1</span></div>
   </div>
+
+  <div class="status-bar" id="statusBar"><span style="color:#666;font-size:10px;">プレイ中の状態がここに出ます</span></div>
 
   <div id="wrap">
     <canvas id="game" width="608" height="672"></canvas>
@@ -311,32 +401,76 @@
     <!-- Title -->
     <div class="overlay show" id="titleOverlay">
       <div class="panel">
-        <h1>ドットくん</h1>
+        <h1>ドットくん <span style="font-size:14px;color:#8a8ab5">v2</span></h1>
         <h2>PAC-MAN 風アクション</h2>
         <div class="sub">
-          迷路のドットを全部食べれば<b style="color:var(--pacman);">ステージクリア</b>。<br>
-          お化けに触れると 1 ミス。<br>
-          パワーエサ (<b style="color:#fff;">大きい白玉</b>) を食べると<br>
-          10 秒間だけ<b style="color:var(--pacman);">お化けを食べられる</b>。
+          自動生成される迷路を毎回冒険。<br>
+          <b style="color:var(--pacman)">アイテム</b>を取ってお化けを出し抜こう。
         </div>
-        <div class="ghost-legend">
-          <div class="g"><span class="d" style="background:var(--ghost-r)"></span>アカベエ・追跡型</div>
-          <div class="g"><span class="d" style="background:var(--ghost-p)"></span>ピンキー・先回り型</div>
-          <div class="g"><span class="d" style="background:var(--ghost-c)"></span>アオスケ・気まぐれ</div>
-          <div class="g"><span class="d" style="background:var(--ghost-o)"></span>グズタ・のんびり</div>
+
+        <div style="text-align:left;margin:10px 0;">
+          <div style="color:#8a8ab5;font-size:10px;letter-spacing:0.15em;margin-bottom:4px;">おばけ (個性あり)</div>
+          <div class="ghost-legend">
+            <div class="g"><span class="d" style="background:var(--ghost-r)"></span>アカベエ・追跡</div>
+            <div class="g"><span class="d" style="background:var(--ghost-c)"></span>アオスケ・先回り</div>
+            <div class="g"><span class="d" style="background:var(--ghost-o)"></span>ダイダラ・挟撃</div>
+            <div class="g"><span class="d" style="background:var(--ghost-v)"></span>ムラサキ・壁抜け</div>
+          </div>
+
+          <div style="color:#8a8ab5;font-size:10px;letter-spacing:0.15em;margin:8px 0 4px;">アイテム</div>
+          <div class="items-legend">
+            <div class="it"><span class="ic" style="background:var(--item-inv)">★</span>無敵 (10秒)</div>
+            <div class="it"><span class="ic" style="background:var(--item-slow)">S</span>スロー (5秒)</div>
+            <div class="it"><span class="ic" style="background:var(--item-freeze)">F</span>停止 (3秒)</div>
+            <div class="it"><span class="ic" style="background:var(--item-x2)">2</span>2倍得点 (10秒)</div>
+            <div class="it"><span class="ic" style="background:var(--item-life)">♥</span>ライフ +1</div>
+          </div>
         </div>
+
+        <div style="color:#8a8ab5;font-size:10px;letter-spacing:0.15em;margin-bottom:4px;">モード</div>
+        <div class="mode-select">
+          <button class="mode-btn selected" data-mode="normal" id="modeNormal">
+            ノーマル
+            <span class="desc">レベル制・星3評価</span>
+          </button>
+          <button class="mode-btn" data-mode="endless" id="modeEndless">
+            エンドレス
+            <span class="desc">敵は速くなり続ける</span>
+          </button>
+        </div>
+
         <div class="highscore" id="titleHi"></div>
-        <button class="btn" id="startBtn">スタート</button>
+
+        <input class="name-input" id="playerName" type="text" maxlength="8" placeholder="なまえ (任意)" />
+
+        <div>
+          <button class="btn" id="startBtn">スタート</button>
+          <button class="btn secondary" id="rankBtn">ランキング</button>
+          <button class="btn secondary" id="achBtn">実績</button>
+        </div>
       </div>
     </div>
 
-    <!-- Game Over -->
-    <div class="overlay" id="gameoverOverlay">
-      <div class="panel" style="border-color: var(--ghost-r);">
-        <h1 style="color: var(--ghost-r); text-shadow: 0 0 16px var(--ghost-r);">GAME OVER</h1>
-        <h2>やられちゃった</h2>
-        <div class="sub" id="goStats"></div>
-        <button class="btn" id="retryBtn">もう一度</button>
+    <!-- Ranking -->
+    <div class="overlay" id="rankingOverlay">
+      <div class="panel">
+        <h1>ランキング</h1>
+        <h2>LEADERBOARD (TOP 10)</h2>
+        <div class="ranking" id="rankingList">
+          <div class="header">#</div><div class="header">なまえ</div><div class="header">スコア</div><div class="header">星</div>
+        </div>
+        <button class="btn" id="rankCloseBtn">戻る</button>
+      </div>
+    </div>
+
+    <!-- Achievements -->
+    <div class="overlay" id="achOverlay">
+      <div class="panel">
+        <h1>実績</h1>
+        <h2>ACHIEVEMENTS</h2>
+        <div class="sub">条件を満たすと解除。全10種。</div>
+        <div class="achievements" id="achList"></div>
+        <button class="btn" id="achCloseBtn">戻る</button>
       </div>
     </div>
 
@@ -344,29 +478,44 @@
     <div class="overlay" id="clearOverlay">
       <div class="panel">
         <h1>ステージクリア!</h1>
-        <h2>NEXT LEVEL</h2>
+        <h2 id="clearSubTitle">LEVEL 1 COMPLETE</h2>
+        <div class="stars" id="clearStars"><span class="star">★</span><span class="star">★</span><span class="star">★</span></div>
         <div class="sub" id="clearStats"></div>
-        <button class="btn" id="nextBtn">次のステージへ</button>
+        <div><button class="btn" id="nextBtn">次のステージへ</button></div>
+      </div>
+    </div>
+
+    <!-- Game Over -->
+    <div class="overlay" id="gameoverOverlay">
+      <div class="panel" style="border-color:var(--ghost-r);">
+        <h1 style="color:var(--ghost-r);text-shadow:0 0 16px var(--ghost-r);">GAME OVER</h1>
+        <h2 id="goSub">やられちゃった</h2>
+        <div class="sub" id="goStats"></div>
+        <div class="stars" id="goStars"><span class="star">★</span><span class="star">★</span><span class="star">★</span></div>
+        <div><button class="btn" id="retryBtn">もう一度</button>
+          <button class="btn secondary" id="goTitleBtn">タイトルへ</button></div>
       </div>
     </div>
 
     <!-- Pause -->
     <div class="overlay" id="pauseOverlay">
       <div class="panel">
-        <h1 style="font-size: 26px;">一時停止</h1>
+        <h1 style="font-size:24px;">一時停止</h1>
         <h2>PAUSED</h2>
-        <div class="sub">P または Esc で再開</div>
-        <button class="btn" id="resumeBtn">再開</button>
+        <div class="sub">P / Esc または II ボタンで再開</div>
+        <div><button class="btn" id="resumeBtn">再開</button>
+          <button class="btn secondary" id="quitBtn">タイトルへ</button></div>
       </div>
     </div>
   </div>
 
   <div class="instructions">
     <div>移動: <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> または <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></div>
+    <div>ダッシュ: <kbd>Shift</kbd></div>
     <div>一時停止: <kbd>P</kbd> / <kbd>Esc</kbd></div>
   </div>
 
-  <div class="touch-pad" id="touchPad" aria-label="モバイル操作">
+  <div class="touch-pad" id="touchPad">
     <button class="up"    data-dir="up"    aria-label="上">▲</button>
     <button class="left"  data-dir="left"  aria-label="左">◀</button>
     <button class="pause" data-dir="pause" aria-label="一時停止">II</button>
@@ -377,164 +526,271 @@
 
 <script>
 "use strict";
-// ==============================================================
-//  ドットくん - Pac-Man 風ゲーム
-// ==============================================================
+
+// ============================================================
+//  ドットくん v2 - PAC-MAN 風アクション
+// ============================================================
 
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-// ---------- Maze --------------------------------------------
-// Legend:
-//  # = wall
-//  . = dot
-//  o = power pellet
-//  P = pacman spawn
-//  G = ghost spawn (ghost house)
-//  - = ghost door
-//  _ = empty (tunnel etc.)
-//  space = empty (no dot)
-//
-// 19 cols × 21 rows
-const MAZE = [
-  "###################",
-  "#........#........#",
-  "#o##.###.#.###.##o#",
-  "#.................#",
-  "#.##.#.#####.#.##.#",
-  "#....#...#...#....#",
-  "####.###.#.###.####",
-  "   #.#   G   #.#   ",
-  "####.# ##-## #.####",
-  "_____.  #GG#  ._____",
-  "####.# ##### #.####",
-  "   #.#       #.#   ",
-  "####.# ##### #.####",
-  "#........#........#",
-  "#.##.###.#.###.##.#",
-  "#o.#....P.....#..o#",
-  "##.#.#.#####.#.#.##",
-  "#....#...#...#....#",
-  "#.######.#.######.#",
-  "#.................#",
-  "###################",
-];
-const COLS = MAZE[0].length;   // 19
-const ROWS = MAZE.length;      // 21
+const COLS = 19;
+const ROWS = 21;
 const CELL = 32;
-const OFFSET_Y = 0;
 canvas.width = COLS * CELL;
 canvas.height = ROWS * CELL;
 
-// grid: kinds of cells (walls / dots / etc.)
-const grid = [];   // 'wall' | 'dot' | 'pellet' | 'empty' | 'door'
-const spawnPac = { x: 0, y: 0 };
-const ghostSpawns = [];
-let totalDots = 0;
+const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
+const rand = (a,b) => a + Math.random()*(b-a);
+const randInt = (a,b) => Math.floor(rand(a,b+1));
+const pick = arr => arr[Math.floor(Math.random()*arr.length)];
+const TAU = Math.PI * 2;
 
-function buildMaze() {
-  grid.length = 0;
-  ghostSpawns.length = 0;
-  totalDots = 0;
-  for (let y = 0; y < ROWS; y++) {
-    const row = [];
-    for (let x = 0; x < COLS; x++) {
-      const ch = MAZE[y][x];
-      let kind = "empty";
-      if (ch === "#") kind = "wall";
-      else if (ch === "-") kind = "door";
-      else if (ch === ".") { kind = "dot"; totalDots++; }
-      else if (ch === "o") { kind = "pellet"; totalDots++; }
-      else if (ch === "P") { kind = "empty"; spawnPac.x = x; spawnPac.y = y; }
-      else if (ch === "G") { kind = "empty"; ghostSpawns.push({ x, y }); }
-      else kind = "empty";
-      row.push(kind);
+// ============================================================
+//  Maze Generator (自動生成・毎回違う)
+// ============================================================
+// 対称迷路を生成: 左半分をrecursive backtrackerで作り、右半分は鏡像
+// 中央に ghost house を配置
+
+function generateMaze(seed) {
+  // 迷路グリッド (19x21) - 内部形式:
+  //   0 = wall, 1 = corridor, 2 = pellet spot, 3 = ghost door
+  // 端は壁、中央付近にお化け家
+
+  const w = COLS, h = ROWS;
+  const g = Array.from({length: h}, () => new Array(w).fill(0));
+
+  // 左半分のカラム範囲 (0..halfW-1)
+  // 中央列 (col 9) は境界
+  const halfW = Math.floor(w/2);  // 9
+
+  // recursive backtracker on cells - 2セル刻みで通路生成
+  const visited = Array.from({length: h}, () => new Array(halfW+1).fill(false));
+
+  // 開始点をランダムに選ぶ (奇数座標)
+  const startX = 1;
+  const startY = 1 + 2*Math.floor(Math.random()*Math.floor((h-2)/2));
+
+  const stack = [[startX, startY]];
+  visited[startY][startX] = true;
+  g[startY][startX] = 2;
+
+  const dirs4 = [[0,-2],[2,0],[0,2],[-2,0]];
+
+  while(stack.length > 0) {
+    const [cx, cy] = stack[stack.length-1];
+    // 未訪問の隣接セルをシャッフル
+    const shuffled = dirs4.slice().sort(() => Math.random()-0.5);
+    let advanced = false;
+    for(const [dx, dy] of shuffled) {
+      const nx = cx + dx, ny = cy + dy;
+      if(nx <= 0 || nx > halfW || ny <= 0 || ny >= h-1) continue;
+      if(visited[ny][nx]) continue;
+      // 通路化
+      g[cy + dy/2][cx + dx/2] = 2; // 中間
+      g[ny][nx] = 2;
+      visited[ny][nx] = true;
+      stack.push([nx, ny]);
+      advanced = true;
+      break;
     }
-    grid.push(row);
+    if(!advanced) stack.pop();
   }
+
+  // 追加のループ (壁をランダムに開けて袋小路を減らす) - 密度アップ
+  for(let i = 0; i < 15; i++) {
+    const x = 1 + Math.floor(Math.random()*(halfW-1));
+    const y = 1 + Math.floor(Math.random()*(h-2));
+    if(g[y][x] === 0) {
+      // 上下 or 左右の壁を開けて通路を繋げる
+      const dx = Math.random() < 0.5 ? 1 : 0;
+      const dy = 1 - dx;
+      const a = g[y-dy]?.[x-dx], b = g[y+dy]?.[x+dx];
+      if(a === 2 && b === 2) g[y][x] = 2;
+    }
+  }
+
+  // 右半分を左半分の鏡像に (col 中心軸 = halfW)
+  for(let y = 0; y < h; y++) {
+    for(let x = 0; x < halfW; x++) {
+      g[y][w-1-x] = g[y][x];
+    }
+    // 中央列は左のセル値を維持
+  }
+
+  // 中央にお化け家を配置 (行 8-10, 列 7-11)
+  const houseTop = 9, houseBottom = 10;
+  const houseLeft = 7, houseRight = 11;
+
+  // お化け家の内部を空ける
+  for(let y = houseTop; y <= houseBottom; y++) {
+    for(let x = houseLeft; x <= houseRight; x++) {
+      g[y][x] = 1; // corridor (no pellet)
+    }
+  }
+  // 家の壁を作る (上下の枠)
+  for(let x = houseLeft - 1; x <= houseRight + 1; x++) {
+    if(x >= 0 && x < w) {
+      g[houseTop - 1][x] = 0;
+      g[houseBottom + 1][x] = 0;
+    }
+  }
+  // 左右の壁
+  for(let y = houseTop; y <= houseBottom; y++) {
+    if(houseLeft - 1 >= 0) g[y][houseLeft - 1] = 0;
+    if(houseRight + 1 < w) g[y][houseRight + 1] = 0;
+  }
+  // 上部にドア
+  g[houseTop - 1][9] = 3; // door
+
+  // お化け家の上に通路を確保 (row 7-8)
+  for(let y = houseTop - 2; y >= houseTop - 3; y--) {
+    if(y >= 0 && g[y][9] === 0) g[y][9] = 2;
+  }
+  // 通路が完全に切れないよう、家の周辺に道を確保
+  for(let x = houseLeft; x <= houseRight; x++) {
+    if(g[houseTop - 2]?.[x] === 0 && g[houseTop - 3]?.[x] === 2) {
+      g[houseTop - 2][x] = 2;
+    }
+  }
+
+  // トンネル (row 10 の左右端を空けて反対側に繋がるようにする)
+  const tunnelY = Math.floor(h/2); // 10
+  g[tunnelY][0] = 4; // tunnel (empty)
+  g[tunnelY][w-1] = 4;
+  // トンネル入口周辺を通路化
+  if(g[tunnelY][1] === 0) g[tunnelY][1] = 2;
+  if(g[tunnelY][w-2] === 0) g[tunnelY][w-2] = 2;
+
+  // 4隅に近い場所にパワーペレット (通路のうち隅に近い場所)
+  const pelletCandidates = [
+    [1, 2], [w-2, 2],
+    [1, h-3], [w-2, h-3],
+  ];
+  pelletCandidates.forEach(([px, py]) => {
+    // 一番近い pellet spot を探してパワーペレットに
+    let best = null, bestD = 999;
+    for(let y = Math.max(0, py-2); y <= Math.min(h-1, py+2); y++) {
+      for(let x = Math.max(0, px-2); x <= Math.min(w-1, px+2); x++) {
+        if(g[y][x] === 2) {
+          const d = Math.abs(x-px) + Math.abs(y-py);
+          if(d < bestD) { bestD = d; best = [x, y]; }
+        }
+      }
+    }
+    if(best) g[best[1]][best[0]] = 5; // power pellet
+  });
+
+  // プレイヤー開始位置を確保 (下部中央)
+  const spawnY = h - 2;
+  const spawnX = 9;
+  if(g[spawnY][spawnX] === 0) g[spawnY][spawnX] = 1;
+
+  // 実グリッドに変換
+  const grid = Array.from({length: h}, (_, y) =>
+    Array.from({length: w}, (_, x) => {
+      const v = g[y][x];
+      if(v === 0) return "wall";
+      if(v === 3) return "door";
+      if(v === 4) return "tunnel";
+      if(v === 5) return "pellet";
+      if(v === 2) return "dot";
+      return "empty"; // house interior
+    })
+  );
+
+  return {
+    grid,
+    playerSpawn: {x: spawnX, y: spawnY},
+    ghostSpawns: [
+      {x: 8, y: 9},   // pinky
+      {x: 9, y: 9},   // blinky
+      {x: 10, y: 9},  // clyde
+      {x: 9, y: 10},  // violet (phase)
+    ],
+    houseExit: {x: 9, y: houseTop - 2},
+  };
 }
-buildMaze();
 
-const isWall = (x, y) => {
-  if (y < 0 || y >= ROWS) return true;
-  const w = (x % COLS + COLS) % COLS;  // horizontal wrap for tunnels
-  return grid[y][w] === "wall";
-};
-const isDoor = (x, y) => y >= 0 && y < ROWS && x >= 0 && x < COLS && grid[y][x] === "door";
-
-// ---------- Input -------------------------------------------
+// ============================================================
+//  Input
+// ============================================================
 const keys = new Set();
 let requestedDir = null;
+const DIR_MAP = {
+  up: {x:0, y:-1}, down: {x:0, y:1},
+  left: {x:-1, y:0}, right: {x:1, y:0},
+};
+
 window.addEventListener("keydown", (e) => {
   const k = e.key.toLowerCase();
   keys.add(k);
-  if (k === "arrowup" || k === "w") { requestedDir = { x: 0, y: -1 }; e.preventDefault(); }
-  else if (k === "arrowdown" || k === "s") { requestedDir = { x: 0, y: 1 }; e.preventDefault(); }
-  else if (k === "arrowleft" || k === "a") { requestedDir = { x: -1, y: 0 }; e.preventDefault(); }
-  else if (k === "arrowright" || k === "d") { requestedDir = { x: 1, y: 0 }; e.preventDefault(); }
-  else if (k === "p" || k === "escape") togglePause();
+  if(k === "arrowup" || k === "w") { requestedDir = DIR_MAP.up; e.preventDefault(); }
+  else if(k === "arrowdown" || k === "s") { requestedDir = DIR_MAP.down; e.preventDefault(); }
+  else if(k === "arrowleft" || k === "a") { requestedDir = DIR_MAP.left; e.preventDefault(); }
+  else if(k === "arrowright" || k === "d") { requestedDir = DIR_MAP.right; e.preventDefault(); }
+  else if(k === "p" || k === "escape") togglePause();
 });
 window.addEventListener("keyup", (e) => keys.delete(e.key.toLowerCase()));
 window.addEventListener("blur", () => keys.clear());
 
-// --- Touch controls (十字ボタン) ---
-const DIR_MAP = {
-  up:    { x: 0, y: -1 },
-  down:  { x: 0, y: 1 },
-  left:  { x: -1, y: 0 },
-  right: { x: 1, y: 0 },
-};
+// Touch pad
 document.querySelectorAll("#touchPad button").forEach((btn) => {
   const d = btn.getAttribute("data-dir");
   const activate = (e) => {
     e.preventDefault();
-    if (d === "pause") { togglePause(); return; }
-    if (DIR_MAP[d]) requestedDir = DIR_MAP[d];
+    if(d === "pause") { togglePause(); return; }
+    if(DIR_MAP[d]) requestedDir = DIR_MAP[d];
+    vibrate(15);
   };
-  btn.addEventListener("touchstart", activate, { passive: false });
+  btn.addEventListener("touchstart", activate, {passive:false});
   btn.addEventListener("mousedown", activate);
 });
 
-// --- Swipe on canvas ---
+// Swipe
 let swipeStart = null;
 canvas.addEventListener("touchstart", (e) => {
-  if (e.touches.length !== 1) return;
-  const t = e.touches[0];
-  swipeStart = { x: t.clientX, y: t.clientY };
-}, { passive: true });
+  if(e.touches.length !== 1) return;
+  swipeStart = {x: e.touches[0].clientX, y: e.touches[0].clientY};
+}, {passive:true});
 canvas.addEventListener("touchmove", (e) => {
-  if (!swipeStart || e.touches.length !== 1) return;
+  if(!swipeStart || e.touches.length !== 1) return;
   const t = e.touches[0];
-  const dx = t.clientX - swipeStart.x;
-  const dy = t.clientY - swipeStart.y;
-  const THRESH = 24; // px
-  if (Math.abs(dx) < THRESH && Math.abs(dy) < THRESH) return;
-  if (Math.abs(dx) > Math.abs(dy)) requestedDir = dx > 0 ? DIR_MAP.right : DIR_MAP.left;
-  else                              requestedDir = dy > 0 ? DIR_MAP.down  : DIR_MAP.up;
-  swipeStart = { x: t.clientX, y: t.clientY };
+  const dx = t.clientX - swipeStart.x, dy = t.clientY - swipeStart.y;
+  if(Math.abs(dx) < 24 && Math.abs(dy) < 24) return;
+  if(Math.abs(dx) > Math.abs(dy)) requestedDir = dx > 0 ? DIR_MAP.right : DIR_MAP.left;
+  else                             requestedDir = dy > 0 ? DIR_MAP.down  : DIR_MAP.up;
+  swipeStart = {x: t.clientX, y: t.clientY};
   e.preventDefault();
-}, { passive: false });
-canvas.addEventListener("touchend", () => { swipeStart = null; }, { passive: true });
+}, {passive:false});
+canvas.addEventListener("touchend", () => { swipeStart = null; }, {passive:true});
 
-// ---------- Audio (Web Audio) -------------------------------
+function vibrate(ms) {
+  if(navigator.vibrate) navigator.vibrate(ms);
+}
+
+// ============================================================
+//  Audio (Web Audio)
+// ============================================================
 const Audio = (() => {
-  let a = null;
+  let a = null, muted = false;
   const ensure = () => {
-    if (!a) {
+    if(!a) {
       try { a = new (window.AudioContext || window.webkitAudioContext)(); }
-      catch (e) { a = null; }
+      catch(e) { a = null; }
     }
-    if (a && a.state === "suspended") a.resume();
+    if(a && a.state === "suspended") a.resume();
     return a;
   };
-  const beep = (freq, dur, type = "square", vol = 0.05, sweep = 0) => {
-    const c = ensure(); if (!c) return;
+  const beep = (freq, dur, type="square", vol=0.05, sweep=0) => {
+    if(muted) return;
+    const c = ensure(); if(!c) return;
     const t = c.currentTime;
     const osc = c.createOscillator();
     const g = c.createGain();
     osc.type = type;
     osc.frequency.setValueAtTime(freq, t);
-    if (sweep) osc.frequency.exponentialRampToValueAtTime(Math.max(30, freq + sweep), t + dur);
+    if(sweep) osc.frequency.exponentialRampToValueAtTime(Math.max(30, freq + sweep), t + dur);
     g.gain.setValueAtTime(vol, t);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     osc.connect(g).connect(c.destination);
@@ -543,361 +799,343 @@ const Audio = (() => {
   let dotToggle = false;
   return {
     ensure,
-    dot: () => { beep(dotToggle ? 660 : 440, 0.04, "square", 0.03); dotToggle = !dotToggle; },
-    pellet: () => { for (let i = 0; i < 4; i++) setTimeout(() => beep(800 + i * 80, 0.06, "triangle", 0.05), i * 40); },
-    death: () => {
-      const cA = ensure(); if (!cA) return;
-      for (let i = 0; i < 10; i++) setTimeout(() => beep(600 - i * 50, 0.15, "sawtooth", 0.06), i * 90);
-    },
+    toggleMute: () => { muted = !muted; return muted; },
+    isMuted: () => muted,
+    dot: () => { beep(dotToggle ? 660 : 440, 0.04, "square", 0.025); dotToggle = !dotToggle; },
+    combo: (level) => { beep(500 + level*80, 0.08, "triangle", 0.05); },
+    pellet: () => { for(let i = 0; i < 4; i++) setTimeout(() => beep(800 + i*80, 0.06, "triangle", 0.05), i*40); },
+    death: () => { for(let i = 0; i < 10; i++) setTimeout(() => beep(600 - i*50, 0.15, "sawtooth", 0.06), i*90); },
     ghost: () => beep(400, 0.15, "sine", 0.05, -200),
-    win: () => {
-      const notes = [523, 659, 784, 1047];
-      notes.forEach((f, i) => setTimeout(() => beep(f, 0.15, "triangle", 0.06), i * 130));
+    item: (type) => {
+      const freqs = {inv:[880,1100,1320], slow:[440,330,220], freeze:[660,660,660], x2:[523,659,784,880], life:[523,659,784,1047]};
+      const f = freqs[type] || [660];
+      f.forEach((freq, i) => setTimeout(() => beep(freq, 0.1, "triangle", 0.06), i*60));
     },
-    start: () => {
-      [523, 659, 784].forEach((f, i) => setTimeout(() => beep(f, 0.1, "square", 0.06), i * 100));
-    },
+    win: () => { const notes = [523, 659, 784, 1047, 1319]; notes.forEach((f, i) => setTimeout(() => beep(f, 0.12, "triangle", 0.06), i*100)); },
+    lose: () => { const notes = [440, 330, 220, 165]; notes.forEach((f, i) => setTimeout(() => beep(f, 0.2, "sawtooth", 0.06), i*180)); },
+    start: () => { [523, 659, 784].forEach((f, i) => setTimeout(() => beep(f, 0.1, "square", 0.06), i*100)); },
+    achievement: () => { [523, 784, 1047].forEach((f, i) => setTimeout(() => beep(f, 0.1, "triangle", 0.08), i*80)); },
   };
 })();
 
-// ---------- Game State --------------------------------------
-const HI_KEY = "dot-kun-hi-v1";
-function loadHi() {
-  try { return parseInt(localStorage.getItem(HI_KEY) || "0", 10) || 0; }
-  catch (e) { return 0; }
+// ============================================================
+//  Storage: HighScore / Ranking / Achievements
+// ============================================================
+const HI_KEY = "dot-kun-v2-hi";
+const RANK_KEY = "dot-kun-v2-rank";
+const ACH_KEY = "dot-kun-v2-ach";
+const NAME_KEY = "dot-kun-v2-name";
+
+function loadStorage(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch(e) { return fallback; }
 }
-function saveHi(s) { try { localStorage.setItem(HI_KEY, String(s)); } catch (e) {} }
+function saveStorage(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
+}
 
+function loadHi() { return loadStorage(HI_KEY, 0); }
+function saveHi(s) { saveStorage(HI_KEY, s); }
+function loadRanking() { return loadStorage(RANK_KEY, []); }
+function saveRanking(r) { saveStorage(RANK_KEY, r); }
+function loadAchievements() { return loadStorage(ACH_KEY, {}); }
+function saveAchievements(a) { saveStorage(ACH_KEY, a); }
+function loadName() { return loadStorage(NAME_KEY, ""); }
+function saveName(n) { saveStorage(NAME_KEY, n); }
+
+function addToRanking(name, score, level, stars, mode) {
+  const rank = loadRanking();
+  rank.push({name: name || "NONAME", score, level, stars, mode, ts: Date.now()});
+  rank.sort((a, b) => b.score - a.score);
+  const trimmed = rank.slice(0, 10);
+  saveRanking(trimmed);
+  return trimmed.findIndex(r => r.ts === rank.find(x => x.ts === Date.now())?.ts) + 1;
+}
+
+// ============================================================
+//  Achievements 定義
+// ============================================================
+const ACHIEVEMENTS = [
+  {id:"first_clear",  title:"はじめの一歩", desc:"レベル1をクリア"},
+  {id:"combo_10",     title:"食いしんぼう", desc:"10連続でドットを食べる"},
+  {id:"no_miss_lv1",  title:"完全無欠", desc:"ノーミスでレベル1クリア"},
+  {id:"item_5",       title:"アイテムハンター", desc:"アイテム5個取得"},
+  {id:"ghost_killer", title:"逆襲", desc:"1度に4体のお化けを食べる"},
+  {id:"level_5",      title:"熟練者", desc:"レベル5に到達"},
+  {id:"level_10",     title:"レジェンド", desc:"レベル10に到達"},
+  {id:"score_10k",    title:"1万点", desc:"スコア10000点達成"},
+  {id:"endless_100",  title:"永遠の探検", desc:"エンドレスで100個ドット"},
+  {id:"perfect_star", title:"完璧主義", desc:"星3つでクリア"},
+];
+
+function unlockAchievement(id) {
+  const ach = loadAchievements();
+  if(!ach[id]) {
+    ach[id] = Date.now();
+    saveAchievements(ach);
+    const def = ACHIEVEMENTS.find(a => a.id === id);
+    if(def) {
+      showCenter(`実績解除: ${def.title}`, 1500);
+      Audio.achievement();
+      vibrate(30);
+    }
+  }
+}
+
+// ============================================================
+//  Items 定義
+// ============================================================
+const ITEM_TYPES = [
+  {key:"inv",    color:"#ffe93b", label:"★", name:"無敵",     duration:10, weight:2},
+  {key:"slow",   color:"#00e5ff", label:"S", name:"スロー",    duration:5,  weight:3},
+  {key:"freeze", color:"#a05bff", label:"F", name:"停止",      duration:3,  weight:2},
+  {key:"x2",     color:"#ff2bd6", label:"2", name:"2倍得点",   duration:10, weight:3},
+  {key:"life",   color:"#5bff9d", label:"♥", name:"ライフ+1",  duration:0,  weight:1},
+];
+
+function pickItemType() {
+  const total = ITEM_TYPES.reduce((s, it) => s + it.weight, 0);
+  let r = Math.random() * total;
+  for(const it of ITEM_TYPES) {
+    r -= it.weight;
+    if(r <= 0) return it;
+  }
+  return ITEM_TYPES[0];
+}
+
+// ============================================================
+//  Game State
+// ============================================================
 let state;
+let mazeData;
 
-function resetGame() {
+function resetGame(mode) {
   state = {
-    running: false,
-    paused: false,
-    over: false,
-    cleared: false,
-    dying: false,
+    running: false, paused: false, over: false, cleared: false, dying: false,
+    mode: mode || "normal",   // "normal" or "endless"
     level: 1,
     score: 0,
     lives: 3,
     dotsLeft: 0,
+    dotsEaten: 0,
+    itemsCollected: 0,
+    missCount: 0,
+    startTime: 0,
+    tick: 0,
+    // combo
+    combo: 0,
+    comboExpire: 0,
+    // buffs
+    buffs: {
+      invincible: 0,   // 無敵タイマー (0 なら無効)
+      slow: 0,         // お化けスロー
+      freeze: 0,       // お化け停止
+      x2: 0,           // 2倍得点
+    },
     frightenedUntil: 0,
-    ghostChainScore: 200,
+    ghostChain: 200,
+    ghostEatChain: 0,   // まとめて食べたお化けの数 (実績用)
     // player
     pac: {
-      x: spawnPac.x, y: spawnPac.y,
-      px: spawnPac.x, py: spawnPac.y,       // fractional pos (grid units)
-      dir: { x: 0, y: 0 },
-      nextDir: { x: 0, y: 0 },
-      speed: 5.5,                            // grid cells per second
+      x: 0, y: 0, px: 0, py: 0,
+      dir: {x:0, y:0}, nextDir: {x:0, y:0},
+      r: 14, hp: 100, maxHp: 100,
+      speed: 6.0,
       mouth: 0,
+      hurtFlash: 0, invul: 0,
       deathTimer: 0,
+      dashCd: 0, dashTimer: 0,
     },
     ghosts: [],
-    scoreFx: [],
-    startAt: performance.now(),
-    tick: 0,
+    items: [],
+    nextItemAt: 0,
+    particles: [],
+    dmgNumbers: [],
+    confetti: [],
+    shake: 0,
   };
-  buildMaze();
-  state.dotsLeft = totalDots;
+  buildLevel();
+}
+
+function buildLevel() {
+  mazeData = generateMaze();
+  const grid = mazeData.grid;
+  state.dotsLeft = 0;
+  state.dotsEaten = 0;
+  for(let y = 0; y < ROWS; y++) {
+    for(let x = 0; x < COLS; x++) {
+      if(grid[y][x] === "dot" || grid[y][x] === "pellet") state.dotsLeft++;
+    }
+  }
+  const sp = mazeData.playerSpawn;
+  state.pac.x = sp.x; state.pac.y = sp.y;
+  state.pac.px = sp.x; state.pac.py = sp.y;
+  state.pac.dir = {x:0, y:0};
+  state.combo = 0;
+  state.comboExpire = 0;
   spawnGhosts();
+  state.items = [];
+  state.nextItemAt = state.tick + rand(10, 20);
+  state.frightenedUntil = 0;
+  state.ghostChain = 200;
   updateHUD();
 }
 
+function isWall(x, y) {
+  if(y < 0 || y >= ROWS) return true;
+  const wx = ((x % COLS) + COLS) % COLS;
+  const cell = mazeData.grid[y][wx];
+  return cell === "wall";
+}
+function isDoor(x, y) {
+  if(y < 0 || y >= ROWS) return false;
+  const wx = ((x % COLS) + COLS) % COLS;
+  return mazeData.grid[y][wx] === "door";
+}
+function isBlocking(x, y, phaseWall) {
+  if(phaseWall) return false;
+  return isWall(x, y);
+}
+function wrapX(x) {
+  if(x < 0) return COLS - 1 + (x + 1);
+  if(x >= COLS) return x - COLS;
+  return x;
+}
+
+// ============================================================
+//  Ghosts (4種の個性)
+// ============================================================
+const GHOST_DEFS = [
+  {name:"blinky",  color:"#ff2b2b", behavior:"chase",       nameJa:"アカベエ"},
+  {name:"pinky",   color:"#00e5ff", behavior:"ambush",      nameJa:"アオスケ"},
+  {name:"clyde",   color:"#ffa64d", behavior:"flank",       nameJa:"ダイダラ"},
+  {name:"violet",  color:"#a05bff", behavior:"phase",       nameJa:"ムラサキ"},
+];
+
 function spawnGhosts() {
-  const colors = [
-    { color: "#ff2b2b", name: "blinky", behavior: "chase" },
-    { color: "#ffb8ff", name: "pinky",  behavior: "ambush" },
-    { color: "#00e5ff", name: "inky",   behavior: "flank" },
-    { color: "#ffa64d", name: "clyde",  behavior: "random" },
-  ];
   state.ghosts = [];
-  for (let i = 0; i < 4; i++) {
-    const s = ghostSpawns[i % Math.max(1, ghostSpawns.length)] || { x: 9, y: 9 };
+  for(let i = 0; i < 4; i++) {
+    const def = GHOST_DEFS[i];
+    const sp = mazeData.ghostSpawns[i] || mazeData.ghostSpawns[0];
     state.ghosts.push({
-      x: s.x, y: s.y,
-      px: s.x, py: s.y,
-      dir: { x: 0, y: -1 },
-      color: colors[i].color,
-      name: colors[i].name,
-      behavior: colors[i].behavior,
-      speed: 4.7 + state.level * 0.15,
-      state: "housed",   // housed | out | frightened | eaten
-      exitDelay: i * 0.8,   // seconds before it exits the house
-      frightenedFlashUntil: 0,
+      x: sp.x, y: sp.y, px: sp.x, py: sp.y,
+      dir: {x:0, y:-1},
+      color: def.color, name: def.name, nameJa: def.nameJa,
+      behavior: def.behavior,
+      speed: 4.4 + state.level * 0.15,
+      state: "housed",  // housed | exiting | out | frightened | eaten
+      exitDelay: i * 1.2 + 0.5,
+      _cell: null,
+      phaseUntil: 0,  // violet の壁抜け
+      lastPhaseAt: 0,
     });
   }
 }
 
-// ---------- HUD --------------------------------------------
-function updateHUD() {
-  document.getElementById("score").textContent = state.score;
-  document.getElementById("hi").textContent = Math.max(state.score, loadHi());
-  document.getElementById("level").textContent = state.level;
-  const lv = document.getElementById("lives");
-  lv.innerHTML = "";
-  for (let i = 0; i < state.lives; i++) {
-    const s = document.createElement("span");
-    s.className = "life-icon";
-    lv.appendChild(s);
-  }
-}
-
-function showCenter(text, ms = 1200) {
-  const el = document.getElementById("centermsg");
-  el.textContent = text;
-  el.classList.add("show");
-  clearTimeout(showCenter._t);
-  showCenter._t = setTimeout(() => el.classList.remove("show"), ms);
-}
-
-// ---------- Movement helpers --------------------------------
-function canMoveTo(px, py, gx, gy, allowDoor = false) {
-  // At target cell integer, check wall
-  if (isWall(gx, gy)) return false;
-  if (isDoor(gx, gy) && !allowDoor) return false;
-  return true;
-}
-
-function wrapX(x) {
-  if (x < 0) return COLS - 1 + (x + 1);
-  if (x >= COLS) return x - COLS;
-  return x;
-}
-
-// ---------- Update ------------------------------------------
-function update(dt) {
-  if (!state.running || state.paused || state.over || state.cleared) return;
-  state.tick += dt;
-
-  // Death animation
-  if (state.dying) {
-    state.pac.deathTimer += dt;
-    if (state.pac.deathTimer > 1.2) {
-      state.dying = false;
-      state.lives -= 1;
-      updateHUD();
-      if (state.lives < 0) {
-        gameOver();
-      } else {
-        // reset positions
-        state.pac.px = spawnPac.x; state.pac.py = spawnPac.y;
-        state.pac.dir = { x: 0, y: 0 };
-        state.pac.nextDir = { x: 0, y: 0 };
-        state.pac.deathTimer = 0;
-        spawnGhosts();
-      }
-    }
-    return;
-  }
-
-  const pac = state.pac;
-
-  // Apply requested direction if possible (turn on approach)
-  if (requestedDir) {
-    // Only allow turn when close to a cell center
-    const cx = Math.round(pac.px), cy = Math.round(pac.py);
-    const distFromCenter = Math.abs(pac.px - cx) + Math.abs(pac.py - cy);
-    if (distFromCenter < 0.25) {
-      // Check the requested cell isn't a wall
-      const tx = cx + requestedDir.x;
-      const ty = cy + requestedDir.y;
-      if (canMoveTo(pac.px, pac.py, tx, ty)) {
-        // snap to center on axis
-        pac.px = cx; pac.py = cy;
-        pac.dir = { ...requestedDir };
-        requestedDir = null;
-      }
-    }
-  }
-
-  // Move
-  const spd = pac.speed;
-  if (pac.dir.x !== 0 || pac.dir.y !== 0) {
-    // Look ahead: don't move into a wall
-    const nx = pac.px + pac.dir.x * spd * dt;
-    const ny = pac.py + pac.dir.y * spd * dt;
-    // Snap-check
-    const cellAheadX = pac.dir.x > 0 ? Math.floor(nx + 0.5) : (pac.dir.x < 0 ? Math.ceil(nx - 0.5) : Math.round(pac.px));
-    const cellAheadY = pac.dir.y > 0 ? Math.floor(ny + 0.5) : (pac.dir.y < 0 ? Math.ceil(ny - 0.5) : Math.round(pac.py));
-    if (canMoveTo(nx, ny, wrapX(cellAheadX), cellAheadY)) {
-      pac.px = nx; pac.py = ny;
-      pac.mouth += dt * 10;
-    } else {
-      // stop at center
-      pac.px = Math.round(pac.px);
-      pac.py = Math.round(pac.py);
-      pac.dir = { x: 0, y: 0 };
-    }
-    // Tunnel wrap
-    if (pac.px < -0.5) pac.px = COLS - 0.5;
-    if (pac.px > COLS - 0.5) pac.px = -0.5;
-  }
-
-  // Consume dots
-  const gx = Math.round(pac.px), gy = Math.round(pac.py);
-  if (gy >= 0 && gy < ROWS && gx >= 0 && gx < COLS) {
-    const k = grid[gy][gx];
-    if (k === "dot") {
-      grid[gy][gx] = "empty";
-      state.score += 10;
-      state.dotsLeft -= 1;
-      Audio.dot();
-      updateHUD();
-    } else if (k === "pellet") {
-      grid[gy][gx] = "empty";
-      state.score += 50;
-      state.dotsLeft -= 1;
-      // frighten all ghosts (that are 'out')
-      state.frightenedUntil = state.tick + 10;
-      state.ghostChainScore = 200;
-      for (const g of state.ghosts) {
-        if (g.state === "out") {
-          g.state = "frightened";
-          // reverse dir
-          g.dir = { x: -g.dir.x, y: -g.dir.y };
-        }
-      }
-      Audio.pellet();
-      updateHUD();
-    }
-    if (state.dotsLeft <= 0) {
-      levelClear();
-      return;
-    }
-  }
-
-  // Frightened expiration
-  if (state.frightenedUntil > 0 && state.tick >= state.frightenedUntil) {
-    state.frightenedUntil = 0;
-    for (const g of state.ghosts) {
-      if (g.state === "frightened") g.state = "out";
-    }
-  }
-
-  // Ghosts
-  for (const g of state.ghosts) updateGhost(g, dt);
-
-  // Ghost collisions
-  for (const g of state.ghosts) {
-    const d = Math.hypot(g.px - pac.px, g.py - pac.py);
-    if (d < 0.65) {
-      if (g.state === "frightened") {
-        // Eat ghost
-        state.score += state.ghostChainScore;
-        state.scoreFx.push({ x: g.px, y: g.py, text: "+" + state.ghostChainScore, life: 1 });
-        state.ghostChainScore *= 2;
-        g.state = "eaten";
-        Audio.ghost();
-        updateHUD();
-      } else if (g.state === "out") {
-        // Die
-        state.dying = true;
-        state.pac.deathTimer = 0;
-        state.pac.dir = { x: 0, y: 0 };
-        Audio.death();
-        return;
-      }
-    }
-  }
-
-  // Score fx
-  for (const fx of state.scoreFx) { fx.life -= dt; fx.y -= dt * 1.5; }
-  state.scoreFx = state.scoreFx.filter(fx => fx.life > 0);
-}
-
 function updateGhost(g, dt) {
-  // Handle house / exit
-  if (g.state === "housed") {
+  const p = state.pac;
+
+  if(g.state === "housed") {
     g.exitDelay -= dt;
-    // gentle up-down bob in house
-    g.py += Math.sin(state.tick * 4) * 0.02;
-    if (g.exitDelay <= 0) {
-      // Move to door position (row 8, col 9) then out
+    g.py += Math.sin(state.tick * 4 + g.name.length) * 0.015;
+    if(g.exitDelay <= 0) {
       g.px = 9; g.py = 9;
       g.state = "exiting";
     }
     return;
   }
-  if (g.state === "exiting") {
+  if(g.state === "exiting") {
     g.py -= 1.5 * dt;
-    if (g.py <= 7) {
-      g.py = 7;
-      g.px = 9;
+    const exitY = mazeData.houseExit.y;
+    if(g.py <= exitY) {
+      g.py = exitY; g.px = mazeData.houseExit.x;
       g.state = "out";
-      g.dir = pickRandomOpen(9, 7);
+      g._cell = null;
+      g.dir = pickRandomOpen(mazeData.houseExit.x, exitY, g);
     }
     return;
   }
-  if (g.state === "eaten") {
-    // Return to house
-    const targetX = 9, targetY = 9;
-    const dx = targetX - g.px, dy = targetY - g.py;
+  if(g.state === "eaten") {
+    const tx = 9, ty = 9;
+    const dx = tx - g.px, dy = ty - g.py;
     const d = Math.hypot(dx, dy);
-    if (d < 0.2) {
-      g.px = targetX; g.py = targetY;
+    if(d < 0.2) {
+      g.px = tx; g.py = ty;
       g.state = "housed";
       g.exitDelay = 3;
+      g._cell = null;
     } else {
-      const spd = 9;
-      g.px += (dx / d) * spd * dt;
-      g.py += (dy / d) * spd * dt;
+      const spd = 10;
+      g.px += (dx/d) * spd * dt;
+      g.py += (dy/d) * spd * dt;
     }
     return;
   }
 
-  // out or frightened
-  const spd = g.state === "frightened" ? Math.max(2.6, g.speed * 0.55) : g.speed;
+  // freeze buff
+  if(state.buffs.freeze > 0) return;
+
+  // frightened / out
+  const spd = g.state === "frightened" ? Math.max(2.6, g.speed * 0.55) : g.speed * (state.buffs.slow > 0 ? 0.5 : 1);
   const cx = Math.round(g.px), cy = Math.round(g.py);
 
-  // 新しいセルに入ったときだけ方向を再選択する (毎フレーム発火の振動バグ回避)
+  // violet の壁抜け: 出現から一定間隔で数秒だけ発動
+  const canPhaseWall = g.behavior === "phase" && g.phaseUntil > state.tick;
+  if(g.behavior === "phase" && g.phaseUntil <= state.tick && state.tick - g.lastPhaseAt > 8) {
+    // 8秒経過で 3秒間発動
+    if(Math.random() < 0.02) {
+      g.phaseUntil = state.tick + 3;
+      g.lastPhaseAt = state.tick;
+    }
+  }
+
   const enteredNewCell = !g._cell || g._cell.x !== cx || g._cell.y !== cy;
-  if (enteredNewCell) {
-    g._cell = { x: cx, y: cy };
-    // セルの中央に近ければスナップして進行方向を再選択
+  if(enteredNewCell) {
+    g._cell = {x: cx, y: cy};
     const options = [];
-    const dirs = [ {x:1,y:0}, {x:-1,y:0}, {x:0,y:1}, {x:0,y:-1} ];
-    for (const d of dirs) {
-      // no reversing (unless dead-end)
-      if (d.x === -g.dir.x && d.y === -g.dir.y) continue;
+    const dirs = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
+    for(const d of dirs) {
+      if(d.x === -g.dir.x && d.y === -g.dir.y) continue;
       const tx = wrapX(cx + d.x);
       const ty = cy + d.y;
-      if (!isWall(tx, ty) && !isDoor(tx, ty)) options.push(d);
+      if(!isBlocking(tx, ty, canPhaseWall) && !isDoor(tx, ty)) options.push(d);
     }
-    if (options.length === 0) {
-      // dead end - allow reverse
-      g.dir = { x: -g.dir.x, y: -g.dir.y };
+    if(options.length === 0) {
+      g.dir = {x: -g.dir.x, y: -g.dir.y};
     } else {
       let chosen;
-      if (g.state === "frightened") {
+      if(g.state === "frightened") {
         chosen = options[Math.floor(Math.random() * options.length)];
       } else {
-        // Aim based on behavior
-        let targetX = state.pac.px, targetY = state.pac.py;
-        if (g.behavior === "ambush") {
-          targetX += state.pac.dir.x * 4;
-          targetY += state.pac.dir.y * 4;
-        } else if (g.behavior === "flank") {
-          // 2 tiles ahead, flipped
-          targetX = state.pac.px * 2 - (state.ghosts[0]?.px || 0) + state.pac.dir.x * 2;
-          targetY = state.pac.py * 2 - (state.ghosts[0]?.py || 0) + state.pac.dir.y * 2;
-        } else if (g.behavior === "random") {
-          const dist2 = (g.px - state.pac.px) ** 2 + (g.py - state.pac.py) ** 2;
-          if (dist2 < 25) {
-            // scatter
-            targetX = 0; targetY = ROWS - 1;
+        // 個性ごとにターゲットを変える
+        let targetX = p.px, targetY = p.py;
+        if(g.behavior === "ambush") {
+          targetX = p.px + p.dir.x * 4;
+          targetY = p.py + p.dir.y * 4;
+        } else if(g.behavior === "flank") {
+          // 挟撃: プレイヤーの反対側を狙う
+          const bx = state.ghosts[0]?.px || 0, by = state.ghosts[0]?.py || 0;
+          targetX = p.px + (p.px - bx);
+          targetY = p.py + (p.py - by);
+        } else if(g.behavior === "phase") {
+          // 壁抜け中は最短、それ以外はランダム性高め
+          if(!canPhaseWall && Math.random() < 0.35) {
+            chosen = options[Math.floor(Math.random() * options.length)];
           }
         }
-        // pick option with min distance to target
-        let bestD = Infinity;
-        for (const o of options) {
-          const nx = cx + o.x, ny = cy + o.y;
-          const dx = nx - targetX, dy = ny - targetY;
-          const dd = dx * dx + dy * dy;
-          if (dd < bestD) { bestD = dd; chosen = o; }
+        if(!chosen) {
+          let bestD = Infinity;
+          for(const o of options) {
+            const nx = cx + o.x, ny = cy + o.y;
+            const dx = nx - targetX, dy = ny - targetY;
+            const dd = dx*dx + dy*dy;
+            if(dd < bestD) { bestD = dd; chosen = o; }
+          }
+          // 気まぐれ
+          if(Math.random() < 0.06 && options.length > 1) chosen = pick(options);
         }
-        // add a bit of randomness
-        if (Math.random() < 0.08 && options.length > 1) chosen = options[Math.floor(Math.random() * options.length)];
       }
       g.dir = chosen || options[0];
     }
@@ -905,290 +1143,812 @@ function updateGhost(g, dt) {
 
   g.px += g.dir.x * spd * dt;
   g.py += g.dir.y * spd * dt;
-  // tunnel
-  if (g.px < -0.5) g.px = COLS - 0.5;
-  if (g.px > COLS - 0.5) g.px = -0.5;
+  if(g.px < -0.5) g.px = COLS - 0.5;
+  if(g.px > COLS - 0.5) g.px = -0.5;
 }
 
-function pickRandomOpen(cx, cy) {
-  const dirs = [ {x:1,y:0}, {x:-1,y:0}, {x:0,y:1}, {x:0,y:-1} ];
+function pickRandomOpen(cx, cy, g) {
+  const dirs = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
   const shuffled = dirs.sort(() => Math.random() - 0.5);
-  for (const d of shuffled) {
-    if (!isWall(wrapX(cx + d.x), cy + d.y)) return d;
+  for(const d of shuffled) {
+    const tx = wrapX(cx + d.x), ty = cy + d.y;
+    if(!isWall(tx, ty) && !isDoor(tx, ty)) return d;
   }
-  return { x: 0, y: -1 };
+  return {x: 0, y: -1};
 }
 
-// ---------- Render ------------------------------------------
+// ============================================================
+//  Items
+// ============================================================
+function trySpawnItem() {
+  if(state.tick < state.nextItemAt) return;
+  if(state.items.length >= 2) return;
+
+  const type = pickItemType();
+  // 通路上のランダム位置 (プレイヤーから離れた場所)
+  for(let attempt = 0; attempt < 30; attempt++) {
+    const x = randInt(1, COLS - 2);
+    const y = randInt(1, ROWS - 2);
+    const cell = mazeData.grid[y][x];
+    if(cell !== "dot" && cell !== "empty") continue;
+    if(Math.hypot(x - state.pac.px, y - state.pac.py) < 5) continue;
+    // お化け家の中は避ける
+    if(y >= 8 && y <= 11 && x >= 7 && x <= 11) continue;
+    state.items.push({
+      x, y, type: type.key, spawnAt: state.tick,
+      expiresAt: state.tick + 15,
+    });
+    state.nextItemAt = state.tick + rand(12, 20);
+    return;
+  }
+  state.nextItemAt = state.tick + 5;
+}
+
+function applyItem(type) {
+  const def = ITEM_TYPES.find(t => t.key === type);
+  if(!def) return;
+  if(type === "life") {
+    state.lives += 1;
+    showCenter("ライフ +1!", 900);
+  } else if(type === "inv") {
+    state.buffs.invincible = state.tick + def.duration;
+    showCenter("無敵!", 900);
+  } else if(type === "slow") {
+    state.buffs.slow = state.tick + def.duration;
+    showCenter("お化けスロー", 900);
+  } else if(type === "freeze") {
+    state.buffs.freeze = state.tick + def.duration;
+    showCenter("お化け停止!", 900);
+  } else if(type === "x2") {
+    state.buffs.x2 = state.tick + def.duration;
+    showCenter("2倍得点!", 900);
+  }
+  state.itemsCollected++;
+  if(state.itemsCollected >= 5) unlockAchievement("item_5");
+  Audio.item(type);
+  vibrate(40);
+  state.score += 100;
+  spawnParticles(state.pac.px * CELL + CELL/2, state.pac.py * CELL + CELL/2, def.color, 20, 300);
+}
+
+// ============================================================
+//  Effects (particles / confetti / dmg numbers)
+// ============================================================
+function spawnParticles(x, y, color, n=8, spd=200) {
+  for(let i = 0; i < n; i++) {
+    const a = Math.random() * TAU;
+    const s = rand(spd * 0.3, spd);
+    state.particles.push({
+      x, y,
+      vx: Math.cos(a) * s, vy: Math.sin(a) * s,
+      life: rand(0.3, 0.7), color, r: rand(1.5, 3.5),
+    });
+  }
+}
+function spawnDmgNumber(x, y, text, color) {
+  state.dmgNumbers.push({
+    x: x + rand(-6, 6), y: y - 10, vy: -50,
+    life: 0.8, text, color: color || "#fff",
+  });
+}
+function spawnConfetti() {
+  const colors = ["#ffe93b", "#ff2bd6", "#00e5ff", "#5bff9d", "#a05bff", "#ffa64d"];
+  for(let i = 0; i < 80; i++) {
+    state.confetti.push({
+      x: canvas.width * Math.random(),
+      y: -20,
+      vx: rand(-100, 100),
+      vy: rand(200, 400),
+      rot: Math.random() * TAU,
+      vrot: rand(-5, 5),
+      w: rand(6, 12), h: rand(3, 6),
+      color: pick(colors),
+      life: rand(1.8, 3),
+    });
+  }
+}
+
+// ============================================================
+//  Update
+// ============================================================
+function update(dt) {
+  if(!state.running || state.paused || state.over || state.cleared) return;
+  state.tick += dt;
+  state.shake *= Math.pow(0.02, dt);
+
+  if(state.dying) {
+    state.pac.deathTimer += dt;
+    if(state.pac.deathTimer > 1.2) {
+      state.dying = false;
+      state.lives -= 1;
+      state.missCount++;
+      updateHUD();
+      if(state.lives < 0) {
+        gameOver();
+      } else {
+        state.pac.px = mazeData.playerSpawn.x;
+        state.pac.py = mazeData.playerSpawn.y;
+        state.pac.dir = {x:0, y:0};
+        state.pac.deathTimer = 0;
+        spawnGhosts();
+      }
+    }
+    return;
+  }
+
+  const p = state.pac;
+
+  // 方向転換
+  if(requestedDir) {
+    const cx = Math.round(p.px), cy = Math.round(p.py);
+    const dist = Math.abs(p.px - cx) + Math.abs(p.py - cy);
+    if(dist < 0.3) {
+      const tx = cx + requestedDir.x, ty = cy + requestedDir.y;
+      if(!isWall(tx, ty) && !isDoor(tx, ty)) {
+        p.px = cx; p.py = cy;
+        p.dir = {...requestedDir};
+        requestedDir = null;
+      }
+    }
+  }
+
+  // ダッシュ (キーボード Shift)
+  const dashActive = p.dashTimer > 0;
+  if(keys.has("shift") && p.dashCd <= 0 && (p.dir.x || p.dir.y)) {
+    p.dashCd = 3;
+    p.dashTimer = 0.3;
+  }
+  if(p.dashTimer > 0) p.dashTimer -= dt;
+  if(p.dashCd > 0) p.dashCd -= dt;
+
+  // 移動
+  const spd = p.speed * (dashActive ? 2.2 : 1);
+  if(p.dir.x || p.dir.y) {
+    const nx = p.px + p.dir.x * spd * dt;
+    const ny = p.py + p.dir.y * spd * dt;
+    const cAheadX = p.dir.x > 0 ? Math.floor(nx + 0.5) : (p.dir.x < 0 ? Math.ceil(nx - 0.5) : Math.round(p.px));
+    const cAheadY = p.dir.y > 0 ? Math.floor(ny + 0.5) : (p.dir.y < 0 ? Math.ceil(ny - 0.5) : Math.round(p.py));
+    if(!isWall(wrapX(cAheadX), cAheadY) && !isDoor(wrapX(cAheadX), cAheadY)) {
+      p.px = nx; p.py = ny;
+      p.mouth += dt * 10;
+    } else {
+      p.px = Math.round(p.px); p.py = Math.round(p.py);
+      p.dir = {x:0, y:0};
+    }
+    if(p.px < -0.5) p.px = COLS - 0.5;
+    if(p.px > COLS - 0.5) p.px = -0.5;
+  }
+
+  if(p.hurtFlash > 0) p.hurtFlash -= dt;
+  if(p.invul > 0) p.invul -= dt;
+
+  // buff 期限
+  for(const k of Object.keys(state.buffs)) {
+    if(state.buffs[k] > 0 && state.tick >= state.buffs[k]) state.buffs[k] = 0;
+  }
+
+  // frightened 期限
+  if(state.frightenedUntil > 0 && state.tick >= state.frightenedUntil) {
+    state.frightenedUntil = 0;
+    for(const g of state.ghosts) if(g.state === "frightened") g.state = "out";
+    state.ghostChain = 200;
+  }
+
+  // combo 期限
+  if(state.combo > 0 && state.tick >= state.comboExpire) {
+    state.combo = 0;
+  }
+
+  // ドット / パワーペレット
+  const gx = Math.round(p.px), gy = Math.round(p.py);
+  if(gy >= 0 && gy < ROWS && gx >= 0 && gx < COLS) {
+    const cell = mazeData.grid[gy][gx];
+    if(cell === "dot") {
+      mazeData.grid[gy][gx] = "empty";
+      // combo
+      state.combo = Math.min(state.combo + 1, 10);
+      state.comboExpire = state.tick + 0.8;
+      const mult = 1 + Math.floor(state.combo / 3);
+      const gain = 10 * mult * (state.buffs.x2 > 0 ? 2 : 1);
+      state.score += gain;
+      state.dotsLeft--;
+      state.dotsEaten++;
+      Audio.dot();
+      if(state.combo >= 3) Audio.combo(state.combo);
+      if(state.combo >= 10) unlockAchievement("combo_10");
+      spawnParticles(gx * CELL + CELL/2, gy * CELL + CELL/2, "#ffe93b", 3, 100);
+      if(state.mode === "endless" && state.dotsEaten >= 100) unlockAchievement("endless_100");
+      updateHUD();
+    } else if(cell === "pellet") {
+      mazeData.grid[gy][gx] = "empty";
+      state.score += 50 * (state.buffs.x2 > 0 ? 2 : 1);
+      state.dotsLeft--;
+      state.frightenedUntil = state.tick + 10;
+      state.ghostChain = 200;
+      state.ghostEatChain = 0;
+      for(const g of state.ghosts) {
+        if(g.state === "out") {
+          g.state = "frightened";
+          g.dir = {x: -g.dir.x, y: -g.dir.y};
+          g._cell = null;
+        }
+      }
+      Audio.pellet();
+      vibrate(30);
+      updateHUD();
+    }
+
+    if(state.dotsLeft <= 0) {
+      if(state.mode === "endless") {
+        // エンドレスモード: 迷路を再生成して継続
+        state.level++;
+        buildLevel();
+        showCenter(`LEVEL ${state.level}`, 900);
+      } else {
+        levelClear();
+        return;
+      }
+    }
+  }
+
+  // アイテム
+  trySpawnItem();
+  for(let i = state.items.length - 1; i >= 0; i--) {
+    const it = state.items[i];
+    if(state.tick > it.expiresAt) { state.items.splice(i, 1); continue; }
+    if(Math.hypot(it.x - p.px, it.y - p.py) < 0.7) {
+      state.items.splice(i, 1);
+      applyItem(it.type);
+    }
+  }
+
+  // お化け更新
+  for(const g of state.ghosts) updateGhost(g, dt);
+
+  // お化け衝突
+  const invincible = state.buffs.invincible > 0;
+  for(const g of state.ghosts) {
+    const d = Math.hypot(g.px - p.px, g.py - p.py);
+    if(d < 0.65) {
+      if(g.state === "frightened") {
+        state.score += state.ghostChain;
+        spawnDmgNumber(g.px * CELL + CELL/2, g.py * CELL + CELL/2, `+${state.ghostChain}`, "#00e5ff");
+        state.ghostChain *= 2;
+        state.ghostEatChain++;
+        if(state.ghostEatChain >= 4) unlockAchievement("ghost_killer");
+        g.state = "eaten";
+        g._cell = null;
+        Audio.ghost();
+        vibrate(50);
+      } else if(g.state === "out" || g.state === "exiting") {
+        if(invincible) {
+          // 無敵中は触れても平気 (お化けを一時後退)
+          const a = Math.atan2(g.py - p.py, g.px - p.px);
+          g.px += Math.cos(a) * 1.5; g.py += Math.sin(a) * 1.5;
+        } else if(p.invul <= 0) {
+          state.dying = true;
+          state.pac.deathTimer = 0;
+          state.pac.dir = {x:0, y:0};
+          state.shake = 15;
+          Audio.death();
+          vibrate([50, 100, 50]);
+          return;
+        }
+      }
+    }
+  }
+
+  // particles
+  for(const pt of state.particles) {
+    pt.x += pt.vx * dt; pt.y += pt.vy * dt;
+    pt.vx *= Math.pow(0.05, dt); pt.vy *= Math.pow(0.05, dt);
+    pt.life -= dt;
+  }
+  state.particles = state.particles.filter(pt => pt.life > 0);
+
+  for(const dn of state.dmgNumbers) {
+    dn.y += dn.vy * dt; dn.life -= dt;
+  }
+  state.dmgNumbers = state.dmgNumbers.filter(dn => dn.life > 0);
+
+  for(const c of state.confetti) {
+    c.x += c.vx * dt; c.y += c.vy * dt; c.vy += 400 * dt;
+    c.rot += c.vrot * dt;
+    c.life -= dt;
+  }
+  state.confetti = state.confetti.filter(c => c.life > 0 && c.y < canvas.height + 40);
+
+  // 実績: score 10000
+  if(state.score >= 10000) unlockAchievement("score_10k");
+}
+
+// ============================================================
+//  Render
+// ============================================================
 function render() {
+  ctx.save();
+  const sh = state.shake;
+  if(sh > 0) ctx.translate((Math.random() - 0.5) * sh, (Math.random() - 0.5) * sh);
+
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Maze
-  for (let y = 0; y < ROWS; y++) {
-    for (let x = 0; x < COLS; x++) {
-      const k = grid[y][x];
+  const invincible = state.buffs.invincible > 0;
+  const darkMode = false; // 暗闇モード未実装 (v2 予定機能)
+
+  // 迷路
+  const grid = mazeData.grid;
+  for(let y = 0; y < ROWS; y++) {
+    for(let x = 0; x < COLS; x++) {
+      const cell = grid[y][x];
       const cx = x * CELL, cy = y * CELL;
-      if (k === "wall") {
-        drawWall(x, y, cx, cy);
-      } else if (k === "door") {
+      if(cell === "wall") drawWall(x, y, cx, cy);
+      else if(cell === "door") {
         ctx.fillStyle = "#ffb8ff";
         ctx.fillRect(cx, cy + CELL/2 - 2, CELL, 4);
-      } else if (k === "dot") {
+      } else if(cell === "dot") {
         ctx.fillStyle = "#ffb897";
         ctx.beginPath();
-        ctx.arc(cx + CELL/2, cy + CELL/2, 3, 0, Math.PI * 2);
-        ctx.fill();
-      } else if (k === "pellet") {
-        const pulse = 5 + Math.sin(state ? state.tick * 5 : 0) * 2;
+        ctx.arc(cx + CELL/2, cy + CELL/2, 3, 0, TAU); ctx.fill();
+      } else if(cell === "pellet") {
+        const pulse = 5 + Math.sin(state.tick * 5) * 2;
         ctx.fillStyle = "#fff";
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = "#fff";
+        ctx.shadowBlur = 10; ctx.shadowColor = "#fff";
         ctx.beginPath();
-        ctx.arc(cx + CELL/2, cy + CELL/2, pulse, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.arc(cx + CELL/2, cy + CELL/2, pulse, 0, TAU); ctx.fill();
         ctx.shadowBlur = 0;
       }
     }
   }
 
-  // Ghosts (behind pacman when dying)
-  for (const g of state.ghosts) drawGhost(g);
+  // アイテム
+  for(const it of state.items) {
+    const def = ITEM_TYPES.find(t => t.key === it.type);
+    if(!def) continue;
+    const cx = it.x * CELL + CELL/2, cy = it.y * CELL + CELL/2;
+    const pulse = Math.sin(state.tick * 6 + it.x) * 3;
+    const size = 12 + pulse;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(state.tick * 2);
+    ctx.shadowBlur = 14; ctx.shadowColor = def.color;
+    ctx.fillStyle = def.color;
+    ctx.fillRect(-size/2, -size/2, size, size);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "#000";
+    ctx.font = "bold 14px sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(def.label, 0, 1);
+    ctx.restore();
 
-  // Pacman
+    // 消失前の点滅
+    if(it.expiresAt - state.tick < 3) {
+      if(Math.floor(state.tick * 8) % 2 === 0) {
+        ctx.fillStyle = "rgba(255,255,255,0.4)";
+        ctx.fillRect(cx - size/2, cy - size/2, size, size);
+      }
+    }
+  }
+
+  // お化け
+  for(const g of state.ghosts) drawGhost(g);
+
+  // パーティクル
+  for(const pt of state.particles) {
+    const a = clamp(pt.life * 2, 0, 1);
+    ctx.globalAlpha = a;
+    ctx.fillStyle = pt.color;
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, pt.r, 0, TAU); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // プレイヤー
   drawPacman();
 
-  // Score fx
-  for (const fx of state.scoreFx) {
-    ctx.globalAlpha = Math.max(0, fx.life);
-    ctx.fillStyle = "#00e5ff";
-    ctx.font = "bold 16px -apple-system, sans-serif";
+  // ダメージ数値
+  for(const dn of state.dmgNumbers) {
+    const a = clamp(dn.life * 1.4, 0, 1);
+    ctx.globalAlpha = a;
+    ctx.font = "bold 18px -apple-system, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(fx.text, fx.x * CELL + CELL/2, fx.y * CELL + CELL/2);
-    ctx.globalAlpha = 1;
+    ctx.fillStyle = dn.color;
+    ctx.shadowBlur = 6; ctx.shadowColor = dn.color;
+    ctx.fillText(dn.text, dn.x, dn.y);
+    ctx.shadowBlur = 0;
   }
+  ctx.globalAlpha = 1;
+
+  // 紙吹雪 (クリア時)
+  for(const c of state.confetti) {
+    ctx.save();
+    ctx.translate(c.x, c.y);
+    ctx.rotate(c.rot);
+    ctx.fillStyle = c.color;
+    ctx.globalAlpha = clamp(c.life, 0, 1);
+    ctx.fillRect(-c.w/2, -c.h/2, c.w, c.h);
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+
+  ctx.restore();
 }
 
 function drawWall(x, y, cx, cy) {
   ctx.fillStyle = "#0000c0";
+  ctx.fillRect(cx, cy, CELL, CELL);
   ctx.strokeStyle = "#4a4aff";
   ctx.lineWidth = 2;
-  ctx.fillRect(cx, cy, CELL, CELL);
-  // Outline segments (only where adjacent is not wall)
-  ctx.strokeStyle = "#4a4aff";
   const s = 2;
   ctx.beginPath();
-  if (!isWall(x, y - 1)) { ctx.moveTo(cx, cy + s); ctx.lineTo(cx + CELL, cy + s); }
-  if (!isWall(x, y + 1)) { ctx.moveTo(cx, cy + CELL - s); ctx.lineTo(cx + CELL, cy + CELL - s); }
-  if (!isWall(x - 1, y)) { ctx.moveTo(cx + s, cy); ctx.lineTo(cx + s, cy + CELL); }
-  if (!isWall(x + 1, y)) { ctx.moveTo(cx + CELL - s, cy); ctx.lineTo(cx + CELL - s, cy + CELL); }
+  if(!isWall(x, y - 1)) { ctx.moveTo(cx, cy + s); ctx.lineTo(cx + CELL, cy + s); }
+  if(!isWall(x, y + 1)) { ctx.moveTo(cx, cy + CELL - s); ctx.lineTo(cx + CELL, cy + CELL - s); }
+  if(!isWall(x - 1, y)) { ctx.moveTo(cx + s, cy); ctx.lineTo(cx + s, cy + CELL); }
+  if(!isWall(x + 1, y)) { ctx.moveTo(cx + CELL - s, cy); ctx.lineTo(cx + CELL - s, cy + CELL); }
   ctx.stroke();
 }
 
 function drawPacman() {
   const p = state.pac;
-  const cx = p.px * CELL + CELL/2;
-  const cy = p.py * CELL + CELL/2;
+  const cx = p.px * CELL + CELL/2, cy = p.py * CELL + CELL/2;
   const r = CELL * 0.42;
-  if (state.dying) {
-    // Death animation - shrink to angle
+  const invincible = state.buffs.invincible > 0;
+
+  if(state.dying) {
     const t = state.pac.deathTimer / 1.2;
-    const startAngle = -Math.PI/2 + t * Math.PI;
-    const endAngle = -Math.PI/2 - t * Math.PI;
+    const startA = -Math.PI/2 + t * Math.PI;
+    const endA = -Math.PI/2 - t * Math.PI;
     ctx.fillStyle = "#ffe93b";
     ctx.beginPath();
     ctx.moveTo(cx, cy);
-    ctx.arc(cx, cy, r * (1 - t * 0.3), startAngle, endAngle, false);
-    ctx.closePath();
-    ctx.fill();
+    ctx.arc(cx, cy, r * (1 - t * 0.3), startA, endA, false);
+    ctx.closePath(); ctx.fill();
     return;
   }
-  // Mouth angle
-  const mouth = (Math.sin(p.mouth) * 0.5 + 0.5) * 0.45; // 0 - 0.45
+
+  const mouth = (Math.sin(p.mouth) * 0.5 + 0.5) * 0.45;
   let ang = 0;
-  if (p.dir.x === 1) ang = 0;
-  else if (p.dir.x === -1) ang = Math.PI;
-  else if (p.dir.y === -1) ang = -Math.PI/2;
-  else if (p.dir.y === 1) ang = Math.PI/2;
-  ctx.fillStyle = "#ffe93b";
-  ctx.shadowBlur = 12;
-  ctx.shadowColor = "#ffe93b";
+  if(p.dir.x === 1) ang = 0;
+  else if(p.dir.x === -1) ang = Math.PI;
+  else if(p.dir.y === -1) ang = -Math.PI/2;
+  else if(p.dir.y === 1) ang = Math.PI/2;
+
+  // 無敵時はレインボー
+  let color = "#ffe93b";
+  if(invincible) {
+    const hue = (state.tick * 200) % 360;
+    color = `hsl(${hue}, 100%, 60%)`;
+  }
+
+  ctx.fillStyle = color;
+  ctx.shadowBlur = invincible ? 24 : 12;
+  ctx.shadowColor = color;
   ctx.beginPath();
   ctx.moveTo(cx, cy);
   ctx.arc(cx, cy, r, ang + mouth, ang + Math.PI * 2 - mouth);
-  ctx.closePath();
-  ctx.fill();
+  ctx.closePath(); ctx.fill();
   ctx.shadowBlur = 0;
-  // Eye
-  const eyeOff = { x: 0, y: -r * 0.4 };
-  if (p.dir.x !== 0) eyeOff.y = -r * 0.4;
-  if (p.dir.y !== 0) { eyeOff.x = -r * 0.35; eyeOff.y = 0; }
+
+  // 目
   ctx.fillStyle = "#000";
+  const eyeOff = {x: 0, y: -r * 0.4};
+  if(p.dir.y !== 0) { eyeOff.x = -r * 0.35; eyeOff.y = 0; }
   ctx.beginPath();
-  ctx.arc(cx + eyeOff.x, cy + eyeOff.y, r * 0.14, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.arc(cx + eyeOff.x, cy + eyeOff.y, r * 0.14, 0, TAU); ctx.fill();
 }
 
 function drawGhost(g) {
-  const cx = g.px * CELL + CELL/2;
-  const cy = g.py * CELL + CELL/2;
+  const cx = g.px * CELL + CELL/2, cy = g.py * CELL + CELL/2;
   const r = CELL * 0.42;
-  let color = g.color;
   const frightened = g.state === "frightened";
   const flashing = frightened && (state.frightenedUntil - state.tick) < 2 && Math.floor(state.tick * 6) % 2 === 0;
-  if (frightened) color = flashing ? "#fff" : "#2121ff";
-  if (g.state === "eaten") {
-    // just eyes
-    drawEyes(cx, cy, g.dir);
-    return;
-  }
-  // Body
+  let color = g.color;
+  if(frightened) color = flashing ? "#fff" : "#2121ff";
+
+  if(g.state === "eaten") { drawEyes(cx, cy, g.dir); return; }
+
+  // 壁抜け中は半透明
+  ctx.globalAlpha = (g.behavior === "phase" && g.phaseUntil > state.tick) ? 0.4 + Math.sin(state.tick * 10) * 0.15 : 1;
+
+  // 体
   ctx.fillStyle = color;
-  ctx.shadowBlur = 8;
-  ctx.shadowColor = color;
+  ctx.shadowBlur = 8; ctx.shadowColor = color;
   ctx.beginPath();
   ctx.arc(cx, cy - r * 0.1, r, Math.PI, 0);
   ctx.lineTo(cx + r, cy + r * 0.7);
-  // wavy bottom
   const waves = 3;
   const wOff = Math.sin(state.tick * 8) * 2;
-  for (let i = 0; i < waves; i++) {
+  for(let i = 0; i < waves; i++) {
     const x1 = cx + r - (r * 2 / waves) * (i + 0.5);
     const y1 = cy + r * 0.85 + (i % 2 === 0 ? -wOff : wOff);
     ctx.lineTo(x1, y1);
     const x2 = cx + r - (r * 2 / waves) * (i + 1);
     ctx.lineTo(x2, cy + r * 0.7);
   }
-  ctx.closePath();
-  ctx.fill();
+  ctx.closePath(); ctx.fill();
   ctx.shadowBlur = 0;
-  // Eyes
-  if (frightened) {
-    // scared face
+
+  if(frightened) {
     ctx.fillStyle = flashing ? "#f00" : "#fff";
     ctx.beginPath();
-    ctx.arc(cx - r * 0.35, cy - r * 0.15, 3, 0, Math.PI * 2);
-    ctx.arc(cx + r * 0.35, cy - r * 0.15, 3, 0, Math.PI * 2);
-    ctx.fill();
-    // mouth
+    ctx.arc(cx - r * 0.35, cy - r * 0.15, 3, 0, TAU);
+    ctx.arc(cx + r * 0.35, cy - r * 0.15, 3, 0, TAU); ctx.fill();
     ctx.strokeStyle = flashing ? "#f00" : "#fff";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    for (let i = -3; i <= 3; i++) {
+    for(let i = -3; i <= 3; i++) {
       const x = cx + i * 4;
       const y = cy + r * 0.35 + (i % 2 === 0 ? 3 : -3);
-      if (i === -3) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      if(i === -3) ctx.moveTo(x, y); else ctx.lineTo(x, y);
     }
     ctx.stroke();
   } else {
     drawEyes(cx, cy, g.dir);
   }
+  ctx.globalAlpha = 1;
 }
 function drawEyes(cx, cy, dir) {
   ctx.fillStyle = "#fff";
   ctx.beginPath();
-  ctx.arc(cx - CELL * 0.16, cy - CELL * 0.08, CELL * 0.13, 0, Math.PI * 2);
-  ctx.arc(cx + CELL * 0.16, cy - CELL * 0.08, CELL * 0.13, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.arc(cx - CELL * 0.16, cy - CELL * 0.08, CELL * 0.13, 0, TAU);
+  ctx.arc(cx + CELL * 0.16, cy - CELL * 0.08, CELL * 0.13, 0, TAU); ctx.fill();
   ctx.fillStyle = "#000";
   const px = (dir.x || 0) * CELL * 0.06;
   const py = (dir.y || 0) * CELL * 0.06;
   ctx.beginPath();
-  ctx.arc(cx - CELL * 0.16 + px, cy - CELL * 0.08 + py, CELL * 0.07, 0, Math.PI * 2);
-  ctx.arc(cx + CELL * 0.16 + px, cy - CELL * 0.08 + py, CELL * 0.07, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.arc(cx - CELL * 0.16 + px, cy - CELL * 0.08 + py, CELL * 0.07, 0, TAU);
+  ctx.arc(cx + CELL * 0.16 + px, cy - CELL * 0.08 + py, CELL * 0.07, 0, TAU); ctx.fill();
 }
 
-// ---------- Flow --------------------------------------------
-function startGame() {
+// ============================================================
+//  HUD & Status
+// ============================================================
+function updateHUD() {
+  document.getElementById("score").textContent = state.score;
+  document.getElementById("hi").textContent = Math.max(state.score, loadHi());
+  document.getElementById("level").textContent = state.level;
+  const lv = document.getElementById("lives");
+  lv.innerHTML = "";
+  for(let i = 0; i < state.lives; i++) {
+    const s = document.createElement("span");
+    s.className = "life-icon";
+    lv.appendChild(s);
+  }
+
+  // Status bar
+  const sb = document.getElementById("statusBar");
+  const badges = [];
+  if(state.combo >= 3) badges.push(`<span class="combo-badge">COMBO ×${1 + Math.floor(state.combo / 3)}</span>`);
+  if(state.buffs.invincible > 0) badges.push(`<span class="buff-badge buff-invincible">★ 無敵 ${Math.ceil(state.buffs.invincible - state.tick)}s</span>`);
+  if(state.buffs.slow > 0) badges.push(`<span class="buff-badge buff-slow">S スロー ${Math.ceil(state.buffs.slow - state.tick)}s</span>`);
+  if(state.buffs.freeze > 0) badges.push(`<span class="buff-badge buff-freeze">F 停止 ${Math.ceil(state.buffs.freeze - state.tick)}s</span>`);
+  if(state.buffs.x2 > 0) badges.push(`<span class="buff-badge buff-x2">×2 ${Math.ceil(state.buffs.x2 - state.tick)}s</span>`);
+  if(badges.length === 0) sb.innerHTML = `<span style="color:#666;font-size:10px;">MODE: ${state.mode === "endless" ? "エンドレス" : "ノーマル"}</span>`;
+  else sb.innerHTML = badges.join("");
+}
+
+function showCenter(text, ms=1200) {
+  const el = document.getElementById("centermsg");
+  el.textContent = text;
+  el.classList.add("show");
+  clearTimeout(showCenter._t);
+  showCenter._t = setTimeout(() => el.classList.remove("show"), ms);
+}
+
+// ============================================================
+//  Flow
+// ============================================================
+function startGame(mode) {
   Audio.ensure();
-  resetGame();
   Audio.start();
+  const savedName = document.getElementById("playerName").value.trim() || loadName();
+  saveName(savedName);
+  resetGame(mode);
+  state.running = true;
+  state.startTime = state.tick;
   document.getElementById("titleOverlay").classList.remove("show");
   document.getElementById("gameoverOverlay").classList.remove("show");
   document.getElementById("clearOverlay").classList.remove("show");
-  state.running = true;
-  showCenter("READY!", 1000);
-  setTimeout(() => {}, 800);
+  showCenter("READY!", 900);
+  updateHUD();
 }
 
 function togglePause() {
-  if (!state || !state.running || state.over || state.cleared) return;
+  if(!state || !state.running || state.over || state.cleared) return;
+  if(document.querySelector(".overlay.show:not(#pauseOverlay)")) return;
   state.paused = !state.paused;
   document.getElementById("pauseOverlay").classList.toggle("show", state.paused);
 }
 
-function gameOver() {
-  state.over = true;
-  state.running = false;
-  const hi = Math.max(state.score, loadHi());
-  saveHi(hi);
-  document.getElementById("goStats").innerHTML = `
-    <div>スコア: <b style="color:var(--pacman)">${state.score}</b></div>
-    <div>到達レベル: <b style="color:var(--pacman)">${state.level}</b></div>
-    <div>ハイスコア: <b style="color:var(--pacman)">${hi}</b></div>
-  `;
-  document.getElementById("gameoverOverlay").classList.add("show");
-  updateTitleHi();
+function computeStars() {
+  // 星3評価: ノーミス+早期クリア+ハイスコア
+  let stars = 1;
+  const clearTime = state.tick - state.startTime;
+  if(state.missCount === 0) stars++;
+  if(clearTime < 60) stars++;
+  return Math.min(3, stars);
 }
 
 function levelClear() {
   state.cleared = true;
   Audio.win();
+  spawnConfetti();
+  vibrate([50, 30, 50]);
+  const stars = computeStars();
+  if(stars === 3) unlockAchievement("perfect_star");
+  if(state.level === 1) {
+    unlockAchievement("first_clear");
+    if(state.missCount === 0) unlockAchievement("no_miss_lv1");
+  }
+  if(state.level >= 5) unlockAchievement("level_5");
+  if(state.level >= 10) unlockAchievement("level_10");
+  const clearTime = state.tick - state.startTime;
+  document.getElementById("clearSubTitle").textContent = `LEVEL ${state.level} COMPLETE`;
   document.getElementById("clearStats").innerHTML = `
     <div>スコア: <b style="color:var(--pacman)">${state.score}</b></div>
-    <div>クリアレベル: <b style="color:var(--pacman)">${state.level}</b></div>
-    <div style="margin-top:10px; color:#a0a0c0;">次はお化けが少し速くなります</div>
+    <div>タイム: <b style="color:var(--pacman)">${clearTime.toFixed(1)}秒</b></div>
+    <div>ミス: <b style="color:var(--pacman)">${state.missCount}回</b></div>
+    <div>アイテム: <b style="color:var(--pacman)">${state.itemsCollected}個</b></div>
   `;
+  const starsEl = document.getElementById("clearStars");
+  const stEls = starsEl.querySelectorAll(".star");
+  stEls.forEach((s, i) => s.classList.toggle("on", i < stars));
   document.getElementById("clearOverlay").classList.add("show");
 }
 
 function nextLevel() {
   document.getElementById("clearOverlay").classList.remove("show");
-  state.level += 1;
+  state.level++;
   state.cleared = false;
-  buildMaze();
-  state.dotsLeft = totalDots;
-  state.pac.px = spawnPac.x; state.pac.py = spawnPac.y;
-  state.pac.dir = { x: 0, y: 0 };
-  spawnGhosts();
-  updateHUD();
+  state.missCount = 0;
+  state.startTime = state.tick;
+  buildLevel();
   state.running = true;
   showCenter(`LEVEL ${state.level}`, 1000);
+}
+
+function gameOver() {
+  state.over = true;
+  state.running = false;
+  Audio.lose();
+  vibrate([80, 40, 80, 40, 80]);
+  const stars = computeStars();
+  const name = loadName();
+  addToRanking(name, state.score, state.level, stars, state.mode);
+  const hi = Math.max(state.score, loadHi());
+  saveHi(hi);
+  document.getElementById("goSub").textContent = state.mode === "endless" ? "エンドレスモード終了" : "やられちゃった";
+  document.getElementById("goStats").innerHTML = `
+    <div>スコア: <b style="color:var(--pacman)">${state.score}</b></div>
+    <div>到達レベル: <b style="color:var(--pacman)">${state.level}</b></div>
+    <div>ハイスコア: <b style="color:var(--pacman)">${hi}</b></div>
+  `;
+  const starsEl = document.getElementById("goStars");
+  const stEls = starsEl.querySelectorAll(".star");
+  stEls.forEach((s, i) => s.classList.toggle("on", i < stars));
+  document.getElementById("gameoverOverlay").classList.add("show");
+  updateTitleHi();
 }
 
 function updateTitleHi() {
   const hi = loadHi();
   const el = document.getElementById("titleHi");
   el.textContent = hi > 0 ? `HI SCORE: ${hi}` : "初挑戦!";
+  // 名前の復元
+  const savedName = loadName();
+  if(savedName) document.getElementById("playerName").value = savedName;
 }
 
-// Buttons
-document.getElementById("startBtn").addEventListener("click", startGame);
-document.getElementById("retryBtn").addEventListener("click", startGame);
+// ============================================================
+//  Overlays: Ranking / Achievements
+// ============================================================
+function renderRanking() {
+  const rank = loadRanking();
+  const listEl = document.getElementById("rankingList");
+  listEl.innerHTML = `<div class="header">#</div><div class="header">なまえ</div><div class="header">スコア</div><div class="header">星</div>`;
+  if(rank.length === 0) {
+    const empty = document.createElement("div");
+    empty.style.gridColumn = "1 / -1";
+    empty.style.color = "#666";
+    empty.style.padding = "20px";
+    empty.textContent = "まだ記録がありません";
+    listEl.appendChild(empty);
+    return;
+  }
+  rank.forEach((r, i) => {
+    const modeIcon = r.mode === "endless" ? "∞" : "";
+    listEl.innerHTML += `
+      <div class="rank">${i+1}</div>
+      <div class="name">${escapeHtml(r.name)} ${modeIcon ? `<span style="color:#8a8ab5;font-size:9px">${modeIcon}Lv${r.level}</span>` : `<span style="color:#8a8ab5;font-size:9px">Lv${r.level}</span>`}</div>
+      <div class="score">${r.score}</div>
+      <div class="stars-mini">${"★".repeat(r.stars || 0)}</div>
+    `;
+  });
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+function renderAchievements() {
+  const done = loadAchievements();
+  const listEl = document.getElementById("achList");
+  listEl.innerHTML = "";
+  ACHIEVEMENTS.forEach(a => {
+    const isDone = !!done[a.id];
+    const div = document.createElement("div");
+    div.className = "ach" + (isDone ? " done" : "");
+    div.innerHTML = `<div class="t">${isDone ? "✓ " : "🔒 "}${a.title}</div><div class="d">${a.desc}</div>`;
+    listEl.appendChild(div);
+  });
+}
+
+// ============================================================
+//  Button bindings
+// ============================================================
+let selectedMode = "normal";
+document.getElementById("modeNormal").addEventListener("click", () => {
+  selectedMode = "normal";
+  document.getElementById("modeNormal").classList.add("selected");
+  document.getElementById("modeEndless").classList.remove("selected");
+});
+document.getElementById("modeEndless").addEventListener("click", () => {
+  selectedMode = "endless";
+  document.getElementById("modeEndless").classList.add("selected");
+  document.getElementById("modeNormal").classList.remove("selected");
+});
+
+document.getElementById("startBtn").addEventListener("click", () => startGame(selectedMode));
+document.getElementById("retryBtn").addEventListener("click", () => startGame(state?.mode || "normal"));
 document.getElementById("nextBtn").addEventListener("click", nextLevel);
 document.getElementById("resumeBtn").addEventListener("click", togglePause);
+document.getElementById("quitBtn").addEventListener("click", () => {
+  state.running = false; state.paused = false;
+  document.getElementById("pauseOverlay").classList.remove("show");
+  document.getElementById("titleOverlay").classList.add("show");
+  updateTitleHi();
+});
+document.getElementById("goTitleBtn").addEventListener("click", () => {
+  document.getElementById("gameoverOverlay").classList.remove("show");
+  document.getElementById("titleOverlay").classList.add("show");
+  updateTitleHi();
+});
 
-// ---------- Loop --------------------------------------------
-// setInterval で駆動 (プレビューペインの rAF スロットリング対策)
+document.getElementById("rankBtn").addEventListener("click", () => {
+  renderRanking();
+  document.getElementById("rankingOverlay").classList.add("show");
+});
+document.getElementById("rankCloseBtn").addEventListener("click", () => {
+  document.getElementById("rankingOverlay").classList.remove("show");
+});
+document.getElementById("achBtn").addEventListener("click", () => {
+  renderAchievements();
+  document.getElementById("achOverlay").classList.add("show");
+});
+document.getElementById("achCloseBtn").addEventListener("click", () => {
+  document.getElementById("achOverlay").classList.remove("show");
+});
+
+// ============================================================
+//  Loop
+// ============================================================
 let lastUpd = performance.now();
 function updateTick() {
   const now = performance.now();
   const dt = Math.min(0.05, (now - lastUpd) / 1000);
   lastUpd = now;
-  try { update(dt); } catch (e) { console.error(e); }
+  try { update(dt); } catch(e) { console.error(e); }
 }
 setInterval(updateTick, 16);
 
 function renderLoop() {
-  try { render(); } catch (e) { console.error(e); }
+  try { render(); } catch(e) { console.error(e); }
   requestAnimationFrame(renderLoop);
 }
 requestAnimationFrame(renderLoop);
-document.addEventListener("visibilitychange", () => { if (!document.hidden) requestAnimationFrame(renderLoop); });
+document.addEventListener("visibilitychange", () => { if(!document.hidden) requestAnimationFrame(renderLoop); });
 
 // Init
-resetGame();
-state.running = false; // wait for start button
+resetGame("normal");
+state.running = false;
 updateTitleHi();
 </script>
