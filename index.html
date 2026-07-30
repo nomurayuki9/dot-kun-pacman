@@ -5,7 +5,7 @@
 -->
 <meta charset="utf-8">
 <title>ドットくん - パックマン風ゲーム</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <style>
   :root {
     --bg-0: #000;
@@ -70,12 +70,18 @@
     position: relative;
     box-shadow: 0 0 40px rgba(33,33,255,0.35), 0 0 80px rgba(255,233,59,0.15);
     border-radius: 6px;
+    /* 迷路の内部解像度 608x672 (aspect 0.905) */
+    aspect-ratio: 608 / 672;
+    /* 画面に収まる最大サイズを計算: 幅は画面幅・高さは画面高から HUD(80) と 十字パッド(240) と余白(40) を引いた分 */
+    width: min(608px, calc(100vw - 8px), calc((100vh - 360px) * 608 / 672));
   }
   canvas {
     display: block;
     background: var(--bg-0);
     border-radius: 4px;
     image-rendering: pixelated;
+    width: 100%;
+    height: 100%;
   }
 
   .instructions {
@@ -244,10 +250,49 @@
   @media (pointer: coarse), (max-width: 720px) {
     .touch-pad { display: block; }
     .instructions { display: none; }
-    #stage { gap: 6px; padding: 4px; }
-    .hud { padding: 6px 10px; gap: 8px 14px; font-size: 12px; }
-    .hud .value { font-size: 16px; }
-    .hud .value.small { font-size: 12px; }
+    #stage {
+      gap: 4px;
+      padding: 4px;
+      justify-content: flex-start;
+      padding-top: env(safe-area-inset-top, 4px);
+      padding-bottom: env(safe-area-inset-bottom, 4px);
+    }
+    .hud { padding: 4px 8px; gap: 4px 10px; font-size: 11px; }
+    .hud .value { font-size: 15px; }
+    .hud .value.small { font-size: 11px; }
+    .hud .barwrap { width: 80px; height: 8px; }
+    .life-icon { width: 12px; height: 12px; }
+
+    /* スマホ縦持ちのキャンバスは HUD (55) + パッド (180) + 余白 (40) を差し引いて収める */
+    #wrap {
+      width: min(calc(100vw - 8px), calc((100vh - 280px) * 608 / 672));
+    }
+
+    /* スマホ縦持ちで確実に収まる十字パッド (小さめ) */
+    .touch-pad {
+      width: 180px;
+      height: 180px;
+      margin-top: 2px;
+    }
+    .touch-pad button { width: 56px; height: 56px; font-size: 26px; border-radius: 14px; }
+    .touch-pad .up    { top: 2px;    left: 62px; }
+    .touch-pad .down  { bottom: 2px; left: 62px; }
+    .touch-pad .left  { left: 2px;   top: 62px; }
+    .touch-pad .right { right: 2px;  top: 62px; }
+    .touch-pad .pause { top: 62px; left: 62px; width: 56px; height: 56px; font-size: 15px; }
+  }
+
+  /* 横向きスマホ (低身長) 用の追加最適化 */
+  @media (pointer: coarse) and (orientation: landscape) and (max-height: 500px) {
+    #stage { flex-direction: row; align-items: center; }
+    .touch-pad { width: 160px; height: 160px; }
+    .touch-pad button { width: 50px; height: 50px; font-size: 22px; }
+    .touch-pad .up    { top: 2px;    left: 55px; }
+    .touch-pad .down  { bottom: 2px; left: 55px; }
+    .touch-pad .left  { left: 2px;   top: 55px; }
+    .touch-pad .right { right: 2px;  top: 55px; }
+    .touch-pad .pause { top: 55px; left: 55px; width: 50px; height: 50px; font-size: 13px; }
+    #wrap { width: min(calc(100vh - 20px) * 608 / 672, calc(100vw - 180px)); }
   }
 </style>
 
