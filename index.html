@@ -186,6 +186,69 @@
     z-index: 5;
   }
   .center-msg.show { opacity: 1; }
+
+  /* Touch controls - スマホ用十字ボタン */
+  .touch-pad {
+    display: none;
+    position: relative;
+    width: 220px;
+    height: 220px;
+    margin-top: 4px;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  .touch-pad button {
+    position: absolute;
+    width: 68px; height: 68px;
+    background: rgba(255,233,59,0.15);
+    border: 2px solid rgba(255,233,59,0.5);
+    border-radius: 16px;
+    color: var(--pacman);
+    font-size: 32px;
+    line-height: 1;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 12px rgba(255,233,59,0.25);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.05s, background 0.1s;
+  }
+  .touch-pad button:active {
+    background: rgba(255,233,59,0.4);
+    transform: scale(0.92);
+    box-shadow: 0 0 20px rgba(255,233,59,0.6);
+  }
+  .touch-pad .up    { top: 4px;    left: 76px; }
+  .touch-pad .down  { bottom: 4px; left: 76px; }
+  .touch-pad .left  { left: 4px;   top: 76px; }
+  .touch-pad .right { right: 4px;  top: 76px; }
+  .touch-pad .pause {
+    top: 76px; left: 76px;
+    width: 68px; height: 68px;
+    background: rgba(0,229,255,0.15);
+    border-color: rgba(0,229,255,0.5);
+    color: var(--ghost-c);
+    font-size: 18px;
+    box-shadow: 0 0 12px rgba(0,229,255,0.2);
+  }
+  .touch-pad .pause:active {
+    background: rgba(0,229,255,0.35);
+    box-shadow: 0 0 20px rgba(0,229,255,0.5);
+  }
+
+  /* タッチ対応デバイスでのみ十字ボタンを表示 */
+  @media (pointer: coarse), (max-width: 720px) {
+    .touch-pad { display: block; }
+    .instructions { display: none; }
+    #stage { gap: 6px; padding: 4px; }
+    .hud { padding: 6px 10px; gap: 8px 14px; font-size: 12px; }
+    .hud .value { font-size: 16px; }
+    .hud .value.small { font-size: 12px; }
+  }
 </style>
 
 <div id="stage">
@@ -256,6 +319,14 @@
   <div class="instructions">
     <div>移動: <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> または <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></div>
     <div>一時停止: <kbd>P</kbd> / <kbd>Esc</kbd></div>
+  </div>
+
+  <div class="touch-pad" id="touchPad" aria-label="モバイル操作">
+    <button class="up"    data-dir="up"    aria-label="上">▲</button>
+    <button class="left"  data-dir="left"  aria-label="左">◀</button>
+    <button class="pause" data-dir="pause" aria-label="一時停止">II</button>
+    <button class="right" data-dir="right" aria-label="右">▶</button>
+    <button class="down"  data-dir="down"  aria-label="下">▼</button>
   </div>
 </div>
 
@@ -360,6 +431,45 @@ window.addEventListener("keydown", (e) => {
 });
 window.addEventListener("keyup", (e) => keys.delete(e.key.toLowerCase()));
 window.addEventListener("blur", () => keys.clear());
+
+// --- Touch controls (十字ボタン) ---
+const DIR_MAP = {
+  up:    { x: 0, y: -1 },
+  down:  { x: 0, y: 1 },
+  left:  { x: -1, y: 0 },
+  right: { x: 1, y: 0 },
+};
+document.querySelectorAll("#touchPad button").forEach((btn) => {
+  const d = btn.getAttribute("data-dir");
+  const activate = (e) => {
+    e.preventDefault();
+    if (d === "pause") { togglePause(); return; }
+    if (DIR_MAP[d]) requestedDir = DIR_MAP[d];
+  };
+  btn.addEventListener("touchstart", activate, { passive: false });
+  btn.addEventListener("mousedown", activate);
+});
+
+// --- Swipe on canvas ---
+let swipeStart = null;
+canvas.addEventListener("touchstart", (e) => {
+  if (e.touches.length !== 1) return;
+  const t = e.touches[0];
+  swipeStart = { x: t.clientX, y: t.clientY };
+}, { passive: true });
+canvas.addEventListener("touchmove", (e) => {
+  if (!swipeStart || e.touches.length !== 1) return;
+  const t = e.touches[0];
+  const dx = t.clientX - swipeStart.x;
+  const dy = t.clientY - swipeStart.y;
+  const THRESH = 24; // px
+  if (Math.abs(dx) < THRESH && Math.abs(dy) < THRESH) return;
+  if (Math.abs(dx) > Math.abs(dy)) requestedDir = dx > 0 ? DIR_MAP.right : DIR_MAP.left;
+  else                              requestedDir = dy > 0 ? DIR_MAP.down  : DIR_MAP.up;
+  swipeStart = { x: t.clientX, y: t.clientY };
+  e.preventDefault();
+}, { passive: false });
+canvas.addEventListener("touchend", () => { swipeStart = null; }, { passive: true });
 
 // ---------- Audio (Web Audio) -------------------------------
 const Audio = (() => {

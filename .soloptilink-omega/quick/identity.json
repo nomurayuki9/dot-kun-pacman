@@ -1,0 +1,37 @@
+{
+  "tool": "ARTE-Omega Identity Attacker",
+  "version": "2026.0",
+  "project": "/Users/soloptilink/名称未設定フォルダ 12/pacman-game",
+  "scannedAt": "2026-07-30T11:59:00.721241+00:00",
+  "totalFindings": 0,
+  "severity": {
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0
+  },
+  "findings": [],
+  "techniques": {
+    "T1558.001": "Golden Ticket (krbtgt forge)",
+    "T1558.002": "Silver Ticket (service TGS forge)",
+    "T1558.003": "Kerberoasting",
+    "T1558.004": "AS-REP Roasting",
+    "T1003.006": "DCSync (DRSGetNCChanges)",
+    "T1207": "DCShadow / Rogue DC",
+    "T1078.004": "Cloud Accounts (Okta/Azure AD)",
+    "T1557.001": "LLMNR/NBT-NS Poisoning (Responder)",
+    "T1098": "Account Manipulation (AdminSDHolder)",
+    "T1134.005": "SID-History Injection"
+  },
+  "remediation": [
+    "gMSA (Group Managed Service Accounts) で SPN サービスを置換",
+    "Protected Users group 全特権 ID 配属 (RC4/NTLM 強制無効化)",
+    "Windows LAPS (Local Admin Password Solution) 全エンドポイント展開",
+    "Authentication Policy Silos で Tier-0 ID を Tier-0 マシン限定",
+    "FIDO2/Passkey 強制 (krbtgt password 二回ローテーション + 6ヶ月毎)",
+    "DC: Event 4662 (object access) で DCSync 検知 Sigma",
+    "DC: NTLM auditing 有効化 + 段階的 Disable",
+    "Okta: HAR ファイル取得時の session 自動 invalidate + IP binding",
+    "Azure AD: Conditional Access + Risk-based MFA + Workload Identity Federation"
+  ]
+}
